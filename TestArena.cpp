@@ -216,7 +216,24 @@ for (size_t i = 0; i < obstacle_tests.size(); ++i) {
     std::cout << "\t*** move testing complete ***\n\n";
 }
 
+// Test RobotBase creation
+void TestArena::test_robot_creation() {
+        std::cout << "\n----------------Testing RobotBase Creation----------------\n";
 
+    TestRobot excessiveBot1(10, 10, flamethrower, "ExcessiveBot - 10,10");
+    print_test_result("ExcessiveBot move clamped at 5", excessiveBot1.get_move() == 5);
+    print_test_result("ExcessiveBot armor clamped at 2", excessiveBot1.get_armor() == 2);
+
+    TestRobot excessiveBot2(0, 10, flamethrower, "ExcessiveBot - 0,10");
+    std::cout << "bot2 move:" << excessiveBot2.get_move() << " armor:" << excessiveBot2.get_armor() << std::endl;
+    print_test_result("ExcessiveBot move clamped at 2", excessiveBot2.get_move() == 2);
+    print_test_result("ExcessiveBot armor clamped at 5", excessiveBot2.get_armor() == 5);
+
+
+    TestRobot negativeBot(-1, -1, flamethrower, "NegativeBot");
+    print_test_result("NegativeBot move clamped", negativeBot.get_move() == 2);
+    print_test_result("NegativeBot armor clamped", negativeBot.get_armor() == 0);
+}
 
 // Test handle_collision
 void TestArena::test_handle_collision() {
@@ -265,23 +282,87 @@ void TestArena::test_handle_shot_with_fake_radar() {
     print_test_result("Flamethrower shot at empty cell", true);
 }
 
-// Test RobotBase creation
-void TestArena::test_robot_creation() {
-        std::cout << "\n----------------Testing RobotBase Creation----------------\n";
+void TestArena::test_grenade_damage() {
+    std::cout << "\n----------------Testing Grenade Damage----------------\n";
 
-    TestRobot excessiveBot1(10, 10, flamethrower, "ExcessiveBot - 10,10");
-    print_test_result("ExcessiveBot move clamped at 5", excessiveBot1.get_move() == 5);
-    print_test_result("ExcessiveBot armor clamped at 2", excessiveBot1.get_armor() == 2);
+    struct LaunchParameters {
+        int test_robot_row;
+        int test_robot_col;
+        int target_row;
+        int target_col;
+    };
 
-    TestRobot excessiveBot2(0, 10, flamethrower, "ExcessiveBot - 0,10");
-    std::cout << "bot2 move:" << excessiveBot2.get_move() << " armor:" << excessiveBot2.get_armor() << std::endl;
-    print_test_result("ExcessiveBot move clamped at 2", excessiveBot2.get_move() == 2);
-    print_test_result("ExcessiveBot armor clamped at 5", excessiveBot2.get_armor() == 5);
+    struct RobotDamageExpectation {
+        std::pair<int, int> location;
+        bool should_take_damage;
+    };
 
+    // Test case setup
+    LaunchParameters launch_parameters = {10, 10, 12, 12};
 
-    TestRobot negativeBot(-1, -1, flamethrower, "NegativeBot");
-    print_test_result("NegativeBot move clamped", negativeBot.get_move() == 2);
-    print_test_result("NegativeBot armor clamped", negativeBot.get_armor() == 0);
+    // Robots' positions and damage expectations
+    std::vector<RobotDamageExpectation> robots = {
+        {{12, 12}, true},  // Direct hit
+        {{11, 11}, true},  // In explosion radius
+        {{9, 9}, false},   // Out of explosion radius
+        {{10, 12}, true},  // In explosion radius
+        {{14, 15}, false}  // Out of explosion radius
+    };
+
+    // Create a fresh arena for this test
+    Arena arena(20, 20);
+    arena.initialize_board(true); // Empty board
+
+    // Create and place the shooter robot
+    ShooterRobot shooter(grenade, "GrenadeShooter");
+    int initial_grenades = shooter.get_grenades();
+
+    shooter.move_to(launch_parameters.test_robot_row, launch_parameters.test_robot_col);
+    shooter.set_boundaries(20, 20);
+    arena.m_robots.push_back(&shooter);
+    arena.m_board[launch_parameters.test_robot_row][launch_parameters.test_robot_col] = 'R';
+
+    // Create and place the target robots
+    std::vector<TestRobot*> target_robots;
+    for (const auto& robot_data : robots) {
+        TestRobot* target_robot = new TestRobot(3, 3, hammer, "TargetBot");
+        target_robot->move_to(robot_data.location.first, robot_data.location.second);
+        target_robot->set_boundaries(20, 20);
+        target_robots.push_back(target_robot);
+        arena.m_robots.push_back(target_robot);
+        arena.m_board[robot_data.location.first][robot_data.location.second] = 'R';
+    }
+
+    // Fire the grenade
+    std::cout << "Grenade fired at (" << launch_parameters.target_row << ", " << launch_parameters.target_col << ")\n";
+    arena.handle_grenade_shot(&shooter, launch_parameters.target_row, launch_parameters.target_col);
+
+    // Verify damage
+    bool test_passed = true;
+    for (size_t i = 0; i < robots.size(); ++i) {
+        int row, col;
+        target_robots[i]->get_current_location(row, col);
+        bool took_damage = target_robots[i]->get_health() < 100; // Assuming initial health is 100
+        std::cout << "Robot at (" << row << ", " << col << ") - Expected Damage: " 
+                  << robots[i].should_take_damage << ", Took Damage: " << took_damage << "\n";
+
+        if (took_damage != robots[i].should_take_damage) {
+            test_passed = false;
+        }
+    }
+
+ 
+    // Print test result
+
+    print_test_result("Grenade damage test", test_passed);
+    print_test_result("Grenade count decremented correctly",shooter.get_grenades() < initial_grenades);
+
+    // Cleanup dynamically allocated memory
+    for (auto* robot : target_robots) {
+        delete robot;
+    }
+
+    std::cout << "\t*** Grenade damage testing complete ***\n\n";
 }
 
 
@@ -308,7 +389,7 @@ void TestArena::test_robot_with_all_weapons()
 
     for (WeaponType weapon : weapons) 
     {
-        std::cout << "\t\nTesting: " << weapon_tests[weapon].description << "\n";
+        std::cout << "\n\tTesting: " << weapon_tests[weapon].description << "\n";
 
         // **Valid Target Test**
         std::cout << "\t*** Testing target is present...\n";
@@ -425,7 +506,7 @@ void TestArena::test_robot_with_all_weapons()
 }
 
 void TestArena::test_radar() {
-    std::cout << "\n----------------Testing Radar----------------\n";
+    std::cout << "\n----------------Testing Radar Ray----------------\n";
 
     struct RadarTestCase {
         int test_robot_row, test_robot_col;
@@ -502,4 +583,85 @@ void TestArena::test_radar() {
     }
 
     std::cout << "\t*** Radar testing complete ***\n\n";
+}
+
+void TestArena::test_radar_local() {
+    std::cout << "\n----------------Testing Radar Local----------------\n";
+
+    struct RadarLocalTestCase {
+        std::vector<std::pair<int, int>> object_positions; // Positions of objects in the 8 surrounding cells
+        std::string description;
+        int expected_detected_count; // How many objects should be detected
+    };
+
+    // Define the 8 possible radar locations relative to the center
+    const std::vector<std::pair<int, int>> radar_offsets = {
+        {-1, 0},  // North
+        {-1, 1},  // North-East
+        {0, 1},   // East
+        {1, 1},   // South-East
+        {1, 0},   // South
+        {1, -1},  // South-West
+        {0, -1},  // West
+        {-1, -1}  // North-West
+    };
+
+    std::vector<RadarLocalTestCase> radar_tests = {
+        {{}, "Test when no objects are in any surrounding locations", 0},
+        {{{-1, 0}}, "Test when one object is in the north location", 1},
+        {{{-1, 1}}, "Test when one object is in the north-east location", 1},
+        {{{0, 1}}, "Test when one object is in the east location", 1},
+        {{{1, 1}}, "Test when one object is in the south-east location", 1},
+        {{{1, 0}}, "Test when one object is in the south location", 1},
+        {{{1, -1}}, "Test when one object is in the south-west location", 1},
+        {{{0, -1}}, "Test when one object is in the west location", 1},
+        {{{-1, -1}}, "Test when one object is in the north-west location", 1},
+        {radar_offsets, "Test when objects are in all surrounding locations", 8},
+        {{{-1, 0}, {0, 1}, {-1, 1}}, "Test when objects are in north, east, and north-east locations", 3}
+    };
+
+    for (const auto& test : radar_tests) {
+        std::cout << "\tTest: " << test.description << "\n";
+
+        // Create a fresh Arena for each test
+        Arena arena(5, 5); // Small arena for simplicity
+        arena.initialize_board(true); // Ensure a clean board
+
+        // Create the test robot
+        TestRobot test_robot(3, 3, railgun, "TestRobot");
+        test_robot.move_to(2, 2); // Place the robot in the center of the arena
+        test_robot.set_boundaries(5, 5);
+        arena.m_robots.push_back(&test_robot);
+        arena.m_board[2][2] = 'R'; // Mark the robot's position on the board
+
+        // Place objects in the specified positions
+        for (const auto& offset : test.object_positions) {
+            int obj_row = 2 + offset.first;
+            int obj_col = 2 + offset.second;
+            if (obj_row >= 0 && obj_row < 5 && obj_col >= 0 && obj_col < 5) {
+                arena.m_board[obj_row][obj_col] = 'M'; // Use 'M' to represent objects
+            }
+        }
+
+        // Perform radar scan with local radar (direction = 0)
+        std::vector<RadarObj> radar_results;
+        arena.get_radar_results(&test_robot, 0, radar_results);
+
+        // Verify the results
+        int detected_count = radar_results.size();
+        bool test_passed = detected_count == test.expected_detected_count;
+        std::cout << "\t  Expected detected count: " << test.expected_detected_count << "\n";
+        std::cout << "\t  Actual detected count: " << detected_count << "\n";
+
+        // Print detected objects
+        for (const auto& obj : radar_results) {
+            std::cout << "\t    Detected object at (" << obj.m_row << ", " << obj.m_col << ")\n";
+        }
+
+        // Print test result
+        print_test_result(test.description, test_passed);
+        std::cout << std::endl;
+    }
+
+    std::cout << "\t*** Radar local testing complete ***\n\n";
 }

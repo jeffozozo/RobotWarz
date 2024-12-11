@@ -46,6 +46,8 @@ private:
     int m_armor;
     int m_move;
     WeaponType m_weapon;
+    int m_grenades;
+
     bool radar_ok; // not used in this version...
     int m_location_row;
     int m_location_col;
@@ -61,6 +63,7 @@ public:
     int get_health();
     int get_armor();
     int get_move();
+    int get_grenades();
     WeaponType get_weapon();
     void set_boundaries(int row_max, int col_max);
 
@@ -70,7 +73,8 @@ public:
     virtual int take_damage(int damage_in) final;
     virtual void move_to(int new_row, int new_col) final;
     virtual void disable_movement() final;
-    virtual void reduce_armor(int amount);
+    virtual void reduce_armor(int amount) final;
+    virtual void decrement_grenades() final;
     virtual bool radar_enabled() final;
     virtual std::string print_stats() const  final;
 

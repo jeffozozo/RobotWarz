@@ -181,7 +181,6 @@ void Arena::scan_location(int row, int col, std::vector<RadarObj>& radar_results
     if (row >= 0 && row < m_size_row && col >= 0 && col < m_size_col) 
         {
             char cell = m_board[row][col];
-            std::cout << "DEBUG: scanning: (" << row << "," << col << ") = '" << cell << "'" << std::endl;
             if (cell != '.')
                 radar_results.push_back(RadarObj(cell, row, col));
         }
@@ -239,41 +238,50 @@ void Arena::get_radar_ray(RobotBase* robot, int radar_direction, std::vector<Rad
 }
 
 // Handle the robot's shot
-void Arena::handle_shot(RobotBase* robot, int shot_row, int shot_col) 
+std::string Arena::handle_shot(RobotBase* robot, int shot_row, int shot_col) 
 {
+    std::stringstream ss;
+
     WeaponType weapon = robot->get_weapon();
     switch (weapon) 
     {
         case flamethrower:
-            std::cout << "flamethrower ";
-            handle_flame_shot(robot, shot_row, shot_col);
+            ss << " firing flamethrower... ";
+            ss << handle_flame_shot(robot, shot_row, shot_col);
             break;
+
         case railgun:
-            std::cout << "railgun ";
-            handle_railgun_shot(robot, shot_row, shot_col);
+            ss << " shooting railgun... ";
+            ss << handle_railgun_shot(robot, shot_row, shot_col);
             break;
+
         case grenade:
-            std::cout << "grenade ";
-            handle_grenade_shot(robot, shot_row, shot_col);
+            ss << " launching grenade... ";
+            ss << handle_grenade_shot(robot, shot_row, shot_col);
             break;
+
         case hammer:
-            std::cout << "hammer ";
-            handle_hammer_shot(robot, shot_row, shot_col);
+            ss << " pounding with the hammer...";
+            ss <<  handle_hammer_shot(robot, shot_row, shot_col);
             break;
 
         default:
-            break;
+            return "strange weapon? ";
+
     }
+    return ss.str();
 }
-void Arena::apply_damage_to_robot(RobotBase* robot, WeaponType weapon)
+std::string Arena::apply_damage_to_robot(RobotBase* robot, WeaponType weapon)
 {
+    std::stringstream ss;
     int armor = robot->get_armor();
     int damage = calculate_damage(weapon,armor);
 
     robot->take_damage(damage);
     robot->reduce_armor(1);
 
-    std::cout << robot->m_name << " takes " << damage << " damage. Health: " << robot->get_health() << std::endl;
+    ss << robot->m_name << " takes " << damage << " damage. Health: " << robot->get_health() << std::endl;
+    return ss.str();
 
 }
 
@@ -312,8 +320,10 @@ int Arena::calculate_damage(WeaponType weapon, int armor_level)
 }
 
 
-void Arena::handle_flame_shot(RobotBase* robot, int shot_row, int shot_col)
+std::string Arena::handle_flame_shot(RobotBase* robot, int shot_row, int shot_col)
 {
+    std::stringstream ss;
+
     // Get the current location of the robot
     int current_row, current_col;
     robot->get_current_location(current_row, current_col);
@@ -408,15 +418,17 @@ void Arena::handle_flame_shot(RobotBase* robot, int shot_row, int shot_col)
                     continue;
                 }
 
-                apply_damage_to_robot(target_robot, flamethrower);
+                ss << apply_damage_to_robot(target_robot, flamethrower);
                 break; // No need to check further flame cells for this robot
             }
         }
     }
+    return ss.str();
 }
 
-void Arena::handle_railgun_shot(RobotBase* robot, int shot_row, int shot_col) 
+std::string Arena::handle_railgun_shot(RobotBase* robot, int shot_row, int shot_col) 
 {
+    std::stringstream ss;
     int current_row, current_col;
     robot->get_current_location(current_row, current_col);
 
@@ -427,8 +439,8 @@ void Arena::handle_railgun_shot(RobotBase* robot, int shot_row, int shot_col)
     // Normalize the direction to unit increments (step in a straight line)
     int steps = std::max(std::abs(delta_row), std::abs(delta_col));
     if (steps == 0) {
-        std::cout << robot->m_name << " railgun - invalid shot direction.\n";
-        return;
+        ss << "Invalid shot direction.";
+        return ss.str();
     }
 
     double step_row = static_cast<double>(delta_row) / steps;
@@ -471,18 +483,28 @@ void Arena::handle_railgun_shot(RobotBase* robot, int shot_row, int shot_col)
     // Apply damage to all robots in the target list
     if (!target_list.empty()) {
         for (RobotBase* target_robot : target_list) {
-            apply_damage_to_robot(target_robot, railgun);
+            ss << apply_damage_to_robot(target_robot, railgun) << "  ";
         }
     } else {
-        std::cout << robot->m_name << " railgun missed.\n";
+        ss << " railgun missed!  The universe is upside down! ";
     }
+
+    return ss.str();
+
 }
 
 
-void Arena::handle_grenade_shot(RobotBase* robot, int shot_row, int shot_col) 
+std::string Arena::handle_grenade_shot(RobotBase* robot, int shot_row, int shot_col) 
 {
+    std::stringstream ss;
     int current_row, current_col;
     robot->get_current_location(current_row, current_col);
+
+    // reduce the number of grenades...
+    if(robot->get_grenades() <=0 )
+        return " out of grenades. ";    
+        
+    robot->decrement_grenades();
 
     int max_distance = 10; // Grenade range
     int delta_row = shot_row - current_row;
@@ -497,11 +519,11 @@ void Arena::handle_grenade_shot(RobotBase* robot, int shot_row, int shot_col)
         shot_col = current_col + static_cast<int>(delta_col * scaling_factor);
     }
 
-    // Generate a 3x3 grid of cells around the target location
+    // Generate a 5x5 grid of cells around the target location
     std::vector<std::pair<int, int>> explosion_cells;
-    for (int r = shot_row - 1; r <= shot_row + 1; ++r) 
+    for (int r = shot_row - 2; r <= shot_row + 2; ++r) 
     {
-        for (int c = shot_col - 1; c <= shot_col + 1; ++c) 
+        for (int c = shot_col - 2; c <= shot_col + 2; ++c) 
         {
             // Ensure the cell is within arena boundaries
             if (r >= 0 && r < m_size_row && c >= 0 && c < m_size_col) 
@@ -510,6 +532,7 @@ void Arena::handle_grenade_shot(RobotBase* robot, int shot_row, int shot_col)
             }
         }
     }
+
 
     // Check each cell for robots
     for (const auto& cell : explosion_cells) 
@@ -528,17 +551,20 @@ void Arena::handle_grenade_shot(RobotBase* robot, int shot_row, int shot_col)
                 if (target_row == cell_row && target_col == cell_col) 
                 {
                     // Apply grenade damage to the robot
-                    apply_damage_to_robot(target, grenade);
+                    ss << apply_damage_to_robot(target, grenade) << " ";
                     break; // No need to check further robots for this cell
                 }
             }
         }
     }
+
+    return ss.str();
 }
 
 
-void Arena::handle_hammer_shot(RobotBase* robot, int shot_row, int shot_col) 
+std::string Arena::handle_hammer_shot(RobotBase* robot, int shot_row, int shot_col) 
 {
+    std::stringstream ss;
     int current_row, current_col;
     robot->get_current_location(current_row, current_col);
 
@@ -565,27 +591,29 @@ void Arena::handle_hammer_shot(RobotBase* robot, int shot_row, int shot_col)
 
             if (target_row_robot == target_row && target_col_robot == target_col) 
             {
-                apply_damage_to_robot(target, hammer);
-                return;
+                ss << apply_damage_to_robot(target, hammer);
+                return ss.str();
             }
         }
     }
 
-    std::cout << robot->m_name << " hammer missed trying to hit (" << target_row << "," << target_col << ").\n";
+    ss << robot->m_name << " hammer missed trying to hit (" << target_row << "," << target_col << ") ";
+    return ss.str();
 }
 
 
 
-void Arena::handle_move(RobotBase* robot) 
+std::string Arena::handle_move(RobotBase* robot) 
 {
+    std::stringstream ss;
     int move_direction;
     int move_distance;
 
     // Check if the robot cannot move
     if (robot->get_move() == 0)
     {
-        std::cout << robot->m_name << " cannot move.\n";
-        return;
+        ss << robot->m_name << " cannot move. ";
+        return ss.str();
     }
 
     // Get the direction and distance desired from the robot
@@ -595,8 +623,8 @@ void Arena::handle_move(RobotBase* robot)
     // Check if no movement is requested
     if (move_direction < 1 || move_direction > 8  || move_distance == 0)
     {
-        std::cout << robot->m_name << " chooses not to move.\n";
-        return;
+        ss << robot->m_name << " chooses not to move.";
+        return ss.str();
     }
 
     int current_row, current_col;
@@ -617,8 +645,8 @@ void Arena::handle_move(RobotBase* robot)
         // Check for obstacles or collisions
         if (cell != '.')
         {
-            handle_collision(robot, cell, next_row, next_col);
-            return;
+            ss << handle_collision(robot, cell, next_row, next_col);
+            return ss.str();
         }
 
         // Move the robot to the next cell
@@ -629,47 +657,47 @@ void Arena::handle_move(RobotBase* robot)
         current_col = next_col;
     }
 
-    std::cout << robot->m_name << " moves to (" << current_row << "," << current_col << ").\n";
+    ss << robot->m_name << " moves to (" << current_row << "," << current_col << ") ";
+    return ss.str();
 }
 
 
 
 // Handle collisions or interactions with obstacles
-void Arena::handle_collision(RobotBase* robot, char cell, int row, int col) 
+std::string Arena::handle_collision(RobotBase* robot, char cell, int row, int col) 
 {
+    std::stringstream ss;
+
     switch (cell) 
     {
         case 'M': // Mound
-            std::cout << robot->m_name << " is stopped by a mound at (" 
-                      << row << "," << col << "). " << std::endl;
+            ss << robot->m_name << " is stopped by a mound at (" << row << "," << col << "). " << std::endl;
             break;
 
         case 'X': // Dead Robot
-            std::cout << robot->m_name << " is stopped by a dead robot at (" 
-                      << row << "," << col << "). " << std::endl;
+            ss << robot->m_name << " is stopped by a dead robot at (" << row << "," << col << "). " << std::endl;
             break;
 
         case 'R': // Another robot
-            std::cout << robot->m_name << " crashes into another robot at (" 
-                      << row << "," << col << "). " << std::endl;
+            ss << robot->m_name << " crashes into another robot at ("  << row << "," << col << "). " << std::endl;
             break;
 
         case 'P': // Pit
             robot->disable_movement();
-            std::cout << robot->m_name << " is stuck in a pit at (" 
-                      << row << "," << col << "). Movement disabled. " << std::endl;
+            ss << robot->m_name << " is stuck in a pit at (" << row << "," << col << "). Movement disabled. " << std::endl;
             break;
 
         case 'F': // Flamethrower
-            std::cout << robot->m_name << " encounters a flamethrower at (" 
-                      << row << "," << col << "). Taking damage! " << std::endl;
-            apply_damage_to_robot(robot, flamethrower); // Apply flamethrower damage
+            ss << robot->m_name << " encounters a flamethrower at ("  << row << "," << col << "). Taking damage! " << std::endl;
+            ss << apply_damage_to_robot(robot, flamethrower); // Apply flamethrower damage
             break;
 
         default:
-            std::cerr << "Unknown obstacle: " << cell << " at (" << row << "," << col << ")." << std::endl;
+            ss << "Unknown obstacle: " << cell << " at (" << row << "," << col << ")." << std::endl;
             break;
     }
+
+    return ss.str();
 }
 
 
@@ -722,7 +750,7 @@ void Arena::print_board(int round, std::ostream& out, bool clear_screen) const {
         }
     }
 
-    out << "              =========== starting round " << round << " ===========" << std::endl;
+    out << std::endl << "              =========== starting round " << round << " ===========" << std::endl;
 
     // Calculate consistent spacing for the columns
     const int col_width = 3; // Adjust width for even spacing (enough for two-digit numbers and a space)
@@ -809,6 +837,7 @@ void Arena::output(std::string text, std::ostream& file)
 // assumes robots have been loaded.
 void Arena::run_simulation(bool live) 
 {
+    std::stringstream ss;
 
     std::vector<RadarObj> radar_results;
     std::ostringstream outstring;
@@ -842,7 +871,8 @@ void Arena::run_simulation(bool live)
             // Handle dead robots
             if (robot->get_health() <= 0) 
             {
-                output(robot->m_name + " " + robot_id + " is out.\n",log_file);
+                ss << robot->m_name << " " << robot_id << " is out." << std::endl;
+                output(ss.str(),log_file);
                 if (m_board[row][col] != 'X') 
                 {
                     m_board[row][col] = 'X';
@@ -886,16 +916,19 @@ void Arena::run_simulation(bool live)
             int shot_row = 0, shot_col = 0;
             if (robot->get_shot_location(shot_row, shot_col)) 
             {
-                std::cout << "Shooting: " ;
-                handle_shot(robot, shot_row, shot_col);
+                output("Shooting: ",log_file);
+                output(handle_shot(robot, shot_row, shot_col), log_file);
             } 
             else 
             {
-                std::cout << "Moving: ";
-                handle_move(robot);
+                output("Moving: ",log_file);
+                output(handle_move(robot),log_file);
             }
 
+            //next robot line.
+            output("\n",log_file);
         }
+
         // Pause for 1 second if live is true
         if (live)
         {

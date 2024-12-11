@@ -23,6 +23,14 @@ std::ostream& operator<<(std::ostream& os, const WeaponType& weapon)
 RobotBase::RobotBase(int move_in, int armor_in, WeaponType weapon_in)
     : m_health(100), m_weapon(weapon_in),  radar_ok(true), m_name("Blank_Robot")
 {
+    //set the number of starting grenades
+    m_grenades = 0;
+    if(weapon_in == grenade)
+    {
+        m_grenades = 15;
+    }
+
+
     // Validate move input
     if (move_in < 2)
     {
@@ -85,6 +93,19 @@ int RobotBase::get_move()
 WeaponType RobotBase::get_weapon()
 {
     return m_weapon;
+}
+
+int RobotBase::get_grenades()
+{
+    return m_grenades;
+}
+
+void RobotBase::decrement_grenades()
+{
+    m_grenades--;
+    if(m_grenades < 0)
+        m_grenades = 0;
+
 }
 
 // Get the robot's current location
