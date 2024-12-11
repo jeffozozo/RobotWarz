@@ -5,18 +5,19 @@ void TestArena::print_test_result(const std::string& test_name, bool condition) 
     const std::string green = "\033[32m";  // ANSI escape code for green
     const std::string red = "\033[31m";    // ANSI escape code for red
     const std::string reset = "\033[0m";   // ANSI escape code to reset color
-    const int result_column_width = 50;    // Adjust this width as needed for alignment
-
-    std::cout << "  Test: " << std::left << std::setw(result_column_width) << test_name;
+    
     if (condition) {
-        std::cout << green << "[ok]" << reset << "\n";
+        std::cout << green << "\n[ok]" << reset ;
     } else {
-        std::cout << red << "[failed]" << reset << "\n";
+        std::cout << red << "\n[failed]" << reset ;
     }
+
+    std::cout << "  Test: " << test_name << std::endl;
 }
 
-void TestArena::test_initialize_board() {
-    std::cout << "Testing initialize_board...\n";
+void TestArena::test_initialize_board() 
+{
+    std::cout << "\tTesting initialize_board...\n";
     Arena arena(10, 10);
     arena.initialize_board();
 
@@ -28,33 +29,30 @@ void TestArena::test_initialize_board() {
     for (int row = 0; row < 10; ++row) {
         for (int col = 0; col < 10; ++col) {
             char cell = arena.m_board[row][col];
-            if (valid_cells.find(cell) == valid_cells.end()) {
+            if (valid_cells.find(cell) == valid_cells.end()) 
+            {
                 board_initialized = false;
-                std::cout << "  [failed] Board contains '" << cell 
-                          << "' at (" << row << "," << col << "), which is not in the list ('.', 'M', 'P', 'F').\n";
-                break;
             }
+
         }
         if (!board_initialized) {
             break;
         }
     }
 
-    if (board_initialized) {
-        std::cout << "  [ok] Board contains only valid characters ('.', 'M', 'P', 'F').\n";
-    }
+    print_test_result("Board contains only valid characters", board_initialized);
 }
 
 
 // Test handle_move
 
 void TestArena::test_handle_move() {
-    std::cout << "\nTesting handle_move...\n";
+    std::cout << "\n----------------Testing handle_move----------------\n";
     Arena arena1(10, 10);
     arena1.initialize_board(true); //empty board
 
     // **Test 1: Boundary conditions with RobotOutOfBounds**
-    std::cout << "*** testing out of bounds: \n" << std::endl;
+    std::cout << "\t*** testing out of bounds: \n" << std::endl;
     RobotOutOfBounds robotOutOfBounds;
     robotOutOfBounds.move_to(5, 5); // Start the robot at (5, 5)
     robotOutOfBounds.set_boundaries(10, 10);
@@ -87,17 +85,17 @@ void TestArena::test_handle_move() {
         robotOutOfBounds.get_current_location(result_row, result_col);
 
         // Print the test details and results
-        std::cout << "  Test: " << test_case.description << "\n";
-        std::cout << "    Start location: (" << test_case.start_row << ", " << test_case.start_col << ")\n";
-        std::cout << "    Expected location: (" << test_case.expected_row << ", " << test_case.expected_col << ")\n";
-        std::cout << "    Result location: (" << result_row << ", " << result_col << ")\n";
+        std::cout << "\tTest: " << test_case.description << "\n";
+        std::cout << "\tStart location: (" << test_case.start_row << ", " << test_case.start_col << ")\n";
+        std::cout << "\tExpected location: (" << test_case.expected_row << ", " << test_case.expected_col << ")\n";
+        std::cout << "\tResult location: (" << result_row << ", " << result_col << ")\n";
         print_test_result(test_case.description, (result_row == test_case.expected_row && result_col == test_case.expected_col));
     }
 
     // **Test 2: BadMovesRobot scenarios**
     Arena arena2(10,10);
     arena2.initialize_board(true); //empty board
-    std::cout << "\n\n*** testing bad move parameters: \n";
+    std::cout << "\n\n\t*** testing bad move parameters: \n";
     BadMovesRobot badMovesRobot;
     badMovesRobot.set_boundaries(10, 10);
 
@@ -116,7 +114,7 @@ void TestArena::test_handle_move() {
 
     for (size_t i = 0; i < bad_moves_tests.size(); ++i) {
         const auto& test_case = bad_moves_tests[i];
-        std::cout << "test case: " << test_case.description << std::endl;
+        std::cout << "\ttest case: " << test_case.description << std::endl;
         badMovesRobot.move_to(5, 5); // Start the robot at (5, 5)
 
         // Run the move logic
@@ -127,8 +125,8 @@ void TestArena::test_handle_move() {
         badMovesRobot.get_current_location(result_row, result_col);
 
         // Print the test details and results
-        std::cout << "    Expected location: (" << test_case.expected_row << ", " << test_case.expected_col << ")\n";
-        std::cout << "    Result location: (" << result_row << ", " << result_col << ")\n";
+        std::cout << "\t    Expected location: (" << test_case.expected_row << ", " << test_case.expected_col << ")\n";
+        std::cout << "\t    Result location: (" << result_row << ", " << result_col << ")\n";
         print_test_result(test_case.description, (result_row == test_case.expected_row && result_col == test_case.expected_col));
 
     }
@@ -136,7 +134,7 @@ void TestArena::test_handle_move() {
     // **Test 3: JumperRobot obstacle tests**
 Arena arena3(10, 10);
 arena3.initialize_board(true); // empty board
-std::cout << "\n*** testing obstacles: \n";
+std::cout << "\n\t*** testing obstacles: \n";
 std::unique_ptr<JumperRobot> jumperBot = std::make_unique<JumperRobot>();
 jumperBot->move_to(4, 1); // Start the robot at (4, 1)
 jumperBot->set_boundaries(10, 10);
@@ -159,7 +157,7 @@ std::vector<ObstacleTestCase> obstacle_tests = {
 
 for (size_t i = 0; i < obstacle_tests.size(); ++i) {
     const auto& test_case = obstacle_tests[i];
-    std::cout << "  Test: " << test_case.description << "\n";
+    std::cout << "\t  Test: " << test_case.description << "\n";
 
     // Set up the board with obstacle and robot in correct place.
     arena3.initialize_board(true);
@@ -177,9 +175,9 @@ for (size_t i = 0; i < obstacle_tests.size(); ++i) {
     jumperBot->get_current_location(result_row, result_col);
 
     // Print the test details and results
-    std::cout << "    Obstacle was at: (" << test_case.obstacle_row << ", " << test_case.obstacle_col << ")\n";
-    std::cout << "    Expected stopping location: (" << test_case.expected_row << ", " << test_case.expected_col << ")\n";
-    std::cout << "    Result stopping location: (" << result_row << ", " << result_col << ")\n";
+    std::cout << "\t    Obstacle was at: (" << test_case.obstacle_row << ", " << test_case.obstacle_col << ")\n";
+    std::cout << "\t    Expected stopping location: (" << test_case.expected_row << ", " << test_case.expected_col << ")\n";
+    std::cout << "\t    Result stopping location: (" << result_row << ", " << result_col << ")\n";
     print_test_result(test_case.description, (result_row == test_case.expected_row && result_col == test_case.expected_col));
 
     // Reset the robot's position and clear the obstacle
@@ -197,7 +195,7 @@ for (size_t i = 0; i < obstacle_tests.size(); ++i) {
     // **Test 4: Disabled movement**
     Arena arena4(10,10);
     arena4.initialize_board(true); //empty board
-    std::cout << "\n*** Testing disabled movement: \n";
+    std::cout << "\t\n*** Testing disabled movement: \n";
     JumperRobot disabledRobot;
     disabledRobot.move_to(6, 6); // Start at (6, 6)
     disabledRobot.set_boundaries(10, 10);
@@ -215,14 +213,14 @@ for (size_t i = 0; i < obstacle_tests.size(); ++i) {
     disabledRobot.get_current_location(after_disable_row, after_disable_col);
     print_test_result("No movement after disabling", (after_disable_row == before_disable_row && after_disable_col == before_disable_col));
 
-    std::cout << "*** move testing complete ***\n\n";
+    std::cout << "\t*** move testing complete ***\n\n";
 }
 
 
 
 // Test handle_collision
 void TestArena::test_handle_collision() {
-    std::cout << "\nTesting handle_collision...\n";
+        std::cout << "\n----------------Testing handle_collision----------------\n";
     Arena arena(10, 10);
     arena.initialize_board();
     TestRobot robot(5, 3, flamethrower, "CollisionBot");
@@ -248,7 +246,7 @@ void TestArena::test_handle_collision() {
 
 // Test handle_shot with fake radar
 void TestArena::test_handle_shot_with_fake_radar() {
-    std::cout << "\nTesting handle_shot with fake radar...\n";
+    std::cout << "\n----------------Testing handle_shot----------------\n";
     Arena arena(10, 10);
     arena.initialize_board();
     TestRobot shooter(5, 3, flamethrower, "ShooterBot");
@@ -269,7 +267,7 @@ void TestArena::test_handle_shot_with_fake_radar() {
 
 // Test RobotBase creation
 void TestArena::test_robot_creation() {
-    std::cout << "\nTesting RobotBase creation...\n";
+        std::cout << "\n----------------Testing RobotBase Creation----------------\n";
 
     TestRobot excessiveBot1(10, 10, flamethrower, "ExcessiveBot - 10,10");
     print_test_result("ExcessiveBot move clamped at 5", excessiveBot1.get_move() == 5);
@@ -287,9 +285,10 @@ void TestArena::test_robot_creation() {
 }
 
 
-// Test BadRobot with all weapons
-void TestArena::test_bad_robot_with_all_weapons() 
+// Test robot with all weapons
+void TestArena::test_robot_with_all_weapons() 
 {
+    std::cout << "\n----------------Testing robot with all weapons----------------\n";
     WeaponType weapons[] = {flamethrower, railgun, grenade, hammer};
 
     struct ShotTestCase 
@@ -309,10 +308,10 @@ void TestArena::test_bad_robot_with_all_weapons()
 
     for (WeaponType weapon : weapons) 
     {
-        std::cout << "\nTesting: " << weapon_tests[weapon].description << "\n";
+        std::cout << "\t\nTesting: " << weapon_tests[weapon].description << "\n";
 
         // **Valid Target Test**
-        std::cout << "*** Testing valid target...\n";
+        std::cout << "\t*** Testing target is present...\n";
         Arena arena(20, 20); // Create a 20x20 arena
         arena.initialize_board(true); // Empty board
 
@@ -327,13 +326,13 @@ void TestArena::test_bad_robot_with_all_weapons()
 
         arena.m_board[1][1] = 'R';
         shooter.move_to(1, 1);
-        std::cout << "Shooter at (1,1)\n";
+        std::cout << "\tShooter at (1,1)\n";
 
         int target_row = weapon_tests[weapon].in_range_row;
         int target_col = weapon_tests[weapon].in_range_col;
         arena.m_board[target_row][target_col] = 'R';
         target.move_to(target_row, target_col); // Position the target within range based on the weapon
-        std::cout << "Target Robot at (" << target_row << "," << target_col << ")" << std::endl;
+        std::cout << "\tTarget Robot at (" << target_row << "," << target_col << ")" << std::endl;
 
 
         // Construct radar_results with the target
@@ -345,30 +344,30 @@ void TestArena::test_bad_robot_with_all_weapons()
 
         if (shooter.get_shot_location(shot_row, shot_col)) 
         {
-            std::cout << "Shot location specified: (" << shot_row << "," << shot_col << ")\n";
+            std::cout << "\tShot location specified: (" << shot_row << "," << shot_col << ")\n";
             int target_health_before = target.get_health();
             int target_armor_before = target.get_armor();
 
-            std::cout << "calling handle shot...\n";
+            std::cout << "\tcalling handle shot...\n";
             arena.handle_shot(&shooter, shot_row, shot_col);
 
             int target_health_after = target.get_health();
             int target_armor_after = target.get_armor();
 
-            std::cout << "Before: h:" << target_health_before << " a:" << target_armor_before << std::endl;
-            std::cout << "After: h: " << target_health_after << " a: " << target_armor_after << std::endl;
+            std::cout << "\tBefore: h:" << target_health_before << " a:" << target_armor_before << std::endl;
+            std::cout << "\tAfter: h: " << target_health_after << " a: " << target_armor_after << std::endl;
 
             bool valid_shot = (target_health_after < target_health_before && target_armor_after < target_armor_before);
-            print_test_result("Valid shot: target takes damage", valid_shot);
+            print_test_result("\tValid shot: target takes damage", valid_shot);
         } 
         else 
         {
-            std::cout << "Shooter did not take the shot.\n"; 
-            print_test_result("Valid shot: shooter did not shoot", false);
+            std::cout << "\tShooter did not take the shot.\n"; 
+            print_test_result("\tValid shot: shooter did not shoot", false);
         }
 
         // ** Invalid Target Test ************************************
-        std::cout << "*** Testing out of range\n";
+        std::cout << "\t*** Testing target out of range\n";
         ShooterRobot Nextshooter(weapon, "ShooterBot");
         TestRobot Nexttarget(5, 3, hammer, "TargetBot");
         Nextshooter.set_boundaries(20, 20);
@@ -380,14 +379,14 @@ void TestArena::test_bad_robot_with_all_weapons()
 
         arena.m_board[2][2] = 'R';
         Nextshooter.move_to(2, 2);
-        std::cout << "Shooter at (2,2)\n";
+        std::cout << "\tShooter at (2,2)\n";
 
         // out of range target
         target_row = 18;
         target_col = 18;
         arena.m_board[target_row][target_col] = 'R';
         target.move_to(target_row, target_col); // Position the target within range based on the weapon
-        std::cout << "Target Robot at (" << target_row << "," << target_col << ")" << std::endl;
+        std::cout << "\tTarget Robot at (" << target_row << "," << target_col << ")" << std::endl;
 
         // Construct radar_results with the target
         radar_results.emplace_back('R', target_row, target_col);
@@ -413,12 +412,94 @@ void TestArena::test_bad_robot_with_all_weapons()
         //special case railgun - it is never out of range.
         if(weapon == railgun)
             if(no_damage)
-                print_test_result("railgun did not hit the target. No damage dealt", no_damage);
+                print_test_result("\trailgun did not hit the target. No damage dealt", no_damage);
             else
-                print_test_result("railgun hits.", true);
+                print_test_result("\trailgun hits.", true);
         else
-            print_test_result("target was not hit. No damage dealt: ",no_damage);
+            print_test_result("\ttarget was not hit. No damage dealt: ",no_damage);
             
 
     }
+
+
+}
+
+void TestArena::test_radar() {
+    std::cout << "\n----------------Testing Radar----------------\n";
+
+    struct RadarTestCase {
+        int test_robot_row, test_robot_col;
+        int target_robot_row, target_robot_col;
+        int radar_direction;
+        std::string description;
+        bool expected_result; // Whether the radar should detect the target
+    };
+
+    std::vector<RadarTestCase> radar_tests = {
+        // Horizontal tests
+        {2, 2, 2, 7, 3, "Horizontal - same row to the right - 3", true},  
+        {5, 5, 5, 1, 7, "Horizontal - same row, to the left - 7", true},
+        {5, 5, 6, 1, 7, "Horizontal - offset - 7", true},  
+
+        // Vertical tests
+        {5, 5, 1, 5, 1, "Vertical - robot detected directly above - 1", true},
+        {5, 5, 7, 5, 5, "Vertical - robot detected directly below - 5", true}, 
+        {5, 5, 7, 6, 5, "Vertical offset", true},    
+
+        // Diagonal tests
+        {5, 5, 8, 8, 4, "Diagonal - robot detected down-right - 4", true},
+        {5, 5, 1, 1, 8, "Diagonal - robot detected up-left - 8", true},
+
+        // Diagonal offsets
+        {5, 5, 7, 8, 4, "Diagonal - detected slightly offset down-right 4 - ", true},
+        {5, 5, 8, 7, 4, "Diagonal - detected slightly offset down-right 4 + ", true},
+        {5, 5, 2, 1, 8, "Diagonal - detected slightly offset up-left - 8 - ", true},
+        {5, 5, 1, 2, 8, "Diagonal - detected slightly offset up-left - 8 +", true}
+    };
+
+    for (const auto& test : radar_tests) {
+        std::cout << "\tTest: " << test.description << "\n";
+        std::cout << "\t  Test Robot starts at: (" << test.test_robot_row << ", " << test.test_robot_col << ")\n";
+        std::cout << "\t  Target Robot is at: (" << test.target_robot_row << ", " << test.target_robot_col << ")\n";
+
+        // Create a fresh Arena for each test
+        Arena arena(10, 10);
+        arena.initialize_board(true); // Ensure a clean board
+
+        // Set up the robots
+        TestRobot test_robot(3, 3, railgun, "TestRobot");
+        TestRobot target_robot(3, 3, hammer, "TargetRobot");
+        test_robot.move_to(test.test_robot_row, test.test_robot_col);
+        target_robot.move_to(test.target_robot_row, test.target_robot_col);
+
+        // Place robots in the arena
+        arena.m_robots.push_back(&test_robot);
+        arena.m_robots.push_back(&target_robot);
+        arena.m_board[test.test_robot_row][test.test_robot_col] = 'R';
+        arena.m_board[test.target_robot_row][test.target_robot_col] = 'R';
+
+        // Debugging: Print the board
+        arena.print_board(0, std::cout, false);
+
+        // Get radar results
+        std::vector<RadarObj> radar_results;
+        arena.get_radar_results(&test_robot, test.radar_direction, radar_results);
+
+        // Check if the target robot is in the radar results
+        bool detected = std::any_of(
+            radar_results.begin(), radar_results.end(),
+            [&](const RadarObj& obj) {
+                return obj.m_row == test.target_robot_row && obj.m_col == test.target_robot_col;
+            }
+        );
+
+        // Print test result
+        print_test_result(
+            test.description + " (Radar Direction: " + std::to_string(test.radar_direction) + ")", 
+            detected == test.expected_result
+        );
+        std::cout << std::endl;
+    }
+
+    std::cout << "\t*** Radar testing complete ***\n\n";
 }

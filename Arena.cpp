@@ -6,6 +6,9 @@
 #include <iostream>
 #include <unistd.h>
 #include <dlfcn.h> // For dynamic library loading
+#include <ostream>
+#include <fstream>
+#include <sstream>
 
 
 // Define the unique characters for robots
@@ -173,49 +176,67 @@ void Arena::get_radar_local(RobotBase* robot, std::vector<RadarObj>& radar_resul
     }
 }
 
-void Arena::get_radar_ray(RobotBase* robot, int radar_direction, std::vector<RadarObj>& radar_results) 
+void Arena::scan_location(int row, int col, std::vector<RadarObj>& radar_results)
 {
-    int current_row, current_col;
-    robot->get_current_location(current_row, current_col);
-
-    // Get the radar direction increments
-    int delta_row = directions[radar_direction].first;
-    int delta_col = directions[radar_direction].second;
-
-    int scan_row = current_row;
-    int scan_col = current_col;
-
-    // Traverse the radar ray path step by step until out of bounds
-    while (true) 
-    {
-        // Move the radar beam to the next cell
-        scan_row += delta_row;
-        scan_col += delta_col;
-
-        // Stop if out of bounds
-        if (scan_row < 0 || scan_row >= m_size_row || scan_col < 0 || scan_col >= m_size_col) 
+    if (row >= 0 && row < m_size_row && col >= 0 && col < m_size_col) 
         {
-            break;
+            char cell = m_board[row][col];
+            std::cout << "DEBUG: scanning: (" << row << "," << col << ") = '" << cell << "'" << std::endl;
+            if (cell != '.')
+                radar_results.push_back(RadarObj(cell, row, col));
         }
-
-        // Get the cell content
-        char cell = m_board[scan_row][scan_col];
-
-        // Skip empty cells
-        if (cell == '.') 
-        {
-            continue;
-        }
-
-        // Record the radar object
-        RadarObj radar_obj;
-        radar_obj.m_type = cell;
-        radar_obj.m_row = scan_row;
-        radar_obj.m_col = scan_col;
-        radar_results.push_back(radar_obj);
-    }
 }
 
+
+void Arena::get_radar_ray(RobotBase* robot, int radar_direction, std::vector<RadarObj>& radar_results) 
+{
+    //some setup stuff
+    static const std::set<int> diagonal_directions = {2, 4, 6, 8};
+    const auto [delta_row, delta_col] = directions[radar_direction];
+    int current_row, current_col;
+
+    robot->get_current_location(current_row, current_col);
+
+    int scan_row = current_row + delta_row;
+    int scan_col = current_col + delta_col;
+
+    radar_results.clear();
+
+    // look at each location from the start location to the edge of the arena
+    while (scan_row < m_size_row && scan_row >= 0 && scan_col < m_size_col && scan_col >= 0) 
+    {
+        // Scan the middle beam
+        scan_location(scan_row,scan_col, radar_results);
+
+        // Scan the +1 perpendicular cell
+        int extra_row = scan_row + delta_col;
+        int extra_col = scan_col - delta_row;
+        scan_location(extra_row, extra_col, radar_results);
+
+        // Scan the -1 perpendicular cell
+        extra_row = scan_row - delta_col;
+        extra_col = scan_col + delta_row;
+        scan_location(extra_row,extra_col,radar_results);
+
+        // if diagonal, we also need to get the hole. 
+        if(diagonal_directions.count(radar_direction))
+        {
+            //same row, diff column
+            extra_row = scan_row;
+            extra_col = scan_col + delta_row;
+            scan_location(extra_row,extra_col,radar_results);
+
+            //same col, diff row
+            extra_row = scan_row + delta_col;
+            extra_col = scan_col;
+            scan_location(extra_row,extra_col,radar_results);
+        }
+        
+        // Move the beam forward
+        scan_row += delta_row;
+        scan_col += delta_col;
+    }
+}
 
 // Handle the robot's shot
 void Arena::handle_shot(RobotBase* robot, int shot_row, int shot_col) 
@@ -693,62 +714,50 @@ void Arena::initialize_board(bool empty)
 
 }
 
-void Arena::print_board(int round, bool clear_screen) const
-{
-    if (clear_screen)
-    {
+void Arena::print_board(int round, std::ostream& out, bool clear_screen) const {
+    if (clear_screen) {
         // Clear the screen
-        std::cout << "\033[2J\033[1;1H"; // ANSI escape code to clear screen and reset cursor
+        if (&out == &std::cout) { // Only clear the screen for console output
+            std::cout << "\033[2J\033[1;1H"; // ANSI escape code to clear screen and reset cursor
+        }
     }
 
-    std::cout << "              =========== starting round " << round << " ===========" << std::endl;
- 
+    out << "              =========== starting round " << round << " ===========" << std::endl;
 
     // Calculate consistent spacing for the columns
     const int col_width = 3; // Adjust width for even spacing (enough for two-digit numbers and a space)
 
     // Print column headers with consistent spacing
-    std::cout << "   "; // Leading space for row indices
-    for (int col = 0; col < m_size_col; ++col)
-    {
-        std::cout << std::setw(col_width) << col; // Use std::setw for fixed width
+    out << "   "; // Leading space for row indices
+    for (int col = 0; col < m_size_col; ++col) {
+        out << std::setw(col_width) << col; // Use std::setw for fixed width
     }
-    std::cout << std::endl;
+    out << std::endl;
 
     // Print each row of the arena
-    for (int row = 0; row < m_size_row; ++row)
-    {
+    for (int row = 0; row < m_size_row; ++row) {
         // Print row index with consistent spacing
-        std::cout << std::setw(2) << row << " "; // Row indices aligned with column headers
+        out << std::setw(2) << row << " "; // Row indices aligned with column headers
 
         // Print the contents of the row
-        for (int col = 0; col < m_size_col; ++col)
-        {
+        for (int col = 0; col < m_size_col; ++col) {
             char cell = m_board[row][col];
-            if (cell == 'R' || cell == 'X') 
-            {
+            if (cell == 'R' || cell == 'X') {
                 int bot_index = get_robot_index(row, col);
-                if (bot_index != -1) 
-                {
+                if (bot_index != -1) {
                     // Append the unique character to 'R' or 'X'
-                    std::cout << std::setw(col_width - 1) << cell << unique_char[bot_index];
-                }
-                else 
-                {
+                    out << std::setw(col_width - 1) << cell << unique_char[bot_index];
+                } else {
                     // Default display if robot index is invalid
-                    std::cout << std::setw(col_width) << cell;
+                    out << std::setw(col_width) << cell;
                 }
-            } 
-            else 
-            {
+            } else {
                 // Display other cells as-is
-                std::cout << std::setw(col_width) << cell;
+                out << std::setw(col_width) << cell;
             }
         }
-        std::cout << std::endl;
+        out << std::endl;
     }
-
-
 }
 
 int Arena::get_robot_index(int row, int col) const
@@ -790,19 +799,29 @@ bool Arena::winner()
 
 }
 
+void Arena::output(std::string text, std::ostream& file)
+{
+    std::cout << text;
+    file << text;
+}
+
 // Run the simulation
 // assumes robots have been loaded.
 void Arena::run_simulation(bool live) 
 {
 
+    std::vector<RadarObj> radar_results;
+    std::ostringstream outstring;
+
    // Seed the random number generator
     std::srand(static_cast<unsigned>(std::time(nullptr)));
 
-    std::vector<RadarObj> radar_results;
+    // open a log file.
+    std::ofstream log_file("RobotWarz_log.txt", std::ios::app);
 
     if(m_robots.size() == 0)
     {
-        std::cout << "Robot list did not load.";
+        output("Robot list did not load.",log_file);
         return;
     }
 
@@ -812,7 +831,8 @@ void Arena::run_simulation(bool live)
         int row, col;
         char robot_id;
 
-        print_board(round, live);
+        print_board(round, std::cout, live);
+        print_board(round, log_file, false);
 
         for (auto* robot : m_robots) 
         {
@@ -822,29 +842,43 @@ void Arena::run_simulation(bool live)
             // Handle dead robots
             if (robot->get_health() <= 0) 
             {
-                std::cout << robot->m_name <<" " << robot_id <<" is out.\n";
+                output(robot->m_name + " " + robot_id + " is out.\n",log_file);
                 if (m_board[row][col] != 'X') 
                 {
                     m_board[row][col] = 'X';
                 }
                 continue;
             }
-
-            robot->print_stats();
+            
+            int bot_index = get_robot_index(row, col);
+            if (bot_index != -1) 
+            {
+                    // Append the unique character to 'R' or 'X'
+                    outstring.str("");
+                    outstring << unique_char[bot_index];
+                    output(outstring.str(),log_file);
+            }
+            output(robot->print_stats(),log_file);
 
             //handle radar
             if(robot->radar_enabled())
             {
-                std::cout << "  checking radar, direction: ";
+                output( "  checking radar, direction: ", log_file);
                 int radar_dir;
                 robot->get_radar_direction(radar_dir);
-                std::cout << radar_dir << " ... ";
+                outstring.str("");
+                outstring << radar_dir << " ... ";
+                output( outstring.str(),log_file );
                 get_radar_results(robot,radar_dir,radar_results);
 
                 if(radar_results.empty())
-                    std::cout << " found nothing. ";
+                    output( " found nothing. ",log_file);
                 else
-                    std::cout << " found '" << radar_results[0].m_type << "' at (" << radar_results[0].m_row << "," << radar_results[0].m_col << ") ";
+                {   outstring.str("");
+                    outstring << " found '" << radar_results[0].m_type << "' at (" << radar_results[0].m_row << "," << radar_results[0].m_col << ") ";
+                    output (outstring.str(),log_file);
+                }
+
                 robot->process_radar_results(radar_results);
             }
 
@@ -874,4 +908,4 @@ void Arena::run_simulation(bool live)
 
     std::cout << "game over.";
 
-}
+};

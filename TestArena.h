@@ -13,7 +13,8 @@ public:
     void test_handle_collision();
     void test_handle_shot_with_fake_radar();
     void test_robot_creation();
-    void test_bad_robot_with_all_weapons();
+    void test_robot_with_all_weapons();
+    void test_radar();
 
 private:
     void print_test_result(const std::string& test_name, bool condition);

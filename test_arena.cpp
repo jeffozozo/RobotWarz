@@ -11,7 +11,7 @@ int main() {
     TestArena tester;
 
     // Test Arena methods
-    std::cout << "=== Testing Arena Functions ===\n";
+    std::cout << "\n\n=== Testing Arena Functions ===\n";
     tester.test_initialize_board();
     tester.test_handle_move();
     tester.test_handle_collision();
@@ -23,7 +23,9 @@ int main() {
 
     // Test BadRobot with all weapon configurations
     std::cout << "\n=== Testing BadRobot with All Weapon Types ===\n";
-    tester.test_bad_robot_with_all_weapons();
+    tester.test_robot_with_all_weapons();
+
+    tester.test_radar();
 
     return 0;
 }
