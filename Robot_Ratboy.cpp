@@ -84,7 +84,7 @@ public:
     }
 
     // Determines the next movement direction
-void get_movement(int& move_direction, int& move_distance) override 
+void get_move_direction(int& move_direction, int& move_distance) override 
 {
     int current_row, current_col;
     get_current_location(current_row, current_col);

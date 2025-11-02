@@ -54,7 +54,7 @@ public:
     }
 
     // Handle movement in a spiral pattern
-    virtual void get_movement(int& move_direction, int& move_distance) override
+    virtual void get_move_direction(int& move_direction, int& move_distance) override
     {
         int current_row, current_col;
         get_current_location(current_row, current_col);

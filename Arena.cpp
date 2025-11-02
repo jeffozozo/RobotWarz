@@ -312,8 +312,8 @@ int Arena::calculate_damage(WeaponType weapon, int armor_level)
     // Generate random damage within the range
     int base_damage = min_damage + (std::rand() % (max_damage - min_damage + 1));
 
-    // Apply armor reduction (10% per armor level, max 40%)
-    double armor_multiplier = 1.0 - (0.1 * std::min(armor_level, 4));
+    // Apply armor reduction (10% per armor level)
+    double armor_multiplier = 1.0 - (0.1 * armor_level);
     int final_damage = static_cast<int>(base_damage * armor_multiplier);
 
     return final_damage;
@@ -617,7 +617,7 @@ std::string Arena::handle_move(RobotBase* robot)
     }
 
     // Get the direction and distance desired from the robot
-    robot->get_movement(move_direction, move_distance);
+    robot->get_move_direction(move_direction, move_distance);
     move_distance = std::clamp(move_distance, 0, robot->get_move());
 
     // Check if no movement is requested

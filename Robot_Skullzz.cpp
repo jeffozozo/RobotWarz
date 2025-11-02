@@ -65,7 +65,7 @@ public:
     }
 
     // Override get_movement to move toward the nearest corner
-    void get_movement(int& direction, int& distance) override {
+    void get_move_direction(int& direction, int& distance) override {
         if (reached_corner) {
             direction = 0;
             distance = 0;

@@ -21,7 +21,7 @@ std::ostream& operator<<(std::ostream& os, const WeaponType& weapon)
 
 // Constructor - Notice that you can't set move speed more than 5
 RobotBase::RobotBase(int move_in, int armor_in, WeaponType weapon_in)
-    : m_health(100), m_weapon(weapon_in),  radar_ok(true), m_name("Blank_Robot")
+    : m_health(100), m_weapon(weapon_in), m_name("Blank_Robot")
 {
     //set the number of starting grenades
     m_grenades = 0;
@@ -115,17 +115,6 @@ void RobotBase::get_current_location(int& current_row, int& current_col)
     current_col = m_location_col;
 }
 
-// Disable the robot's radar - unused.
-void RobotBase::disable_radar()
-{
-    radar_ok = false;
-}
-
-// Check if the radar is enabled
-bool RobotBase::radar_enabled()
-{
-    return radar_ok;
-}
 
 // Apply damage to the robot and reduce its health
 int RobotBase::take_damage(int damage_in)
@@ -167,8 +156,6 @@ void RobotBase::set_boundaries(int row_max, int col_max)
 }
 
 std::string RobotBase::print_stats() const {
-    // Determine radar status
-    std::string radar_status = radar_ok ? "Operational" : "Disabled";
 
     // Construct the robot's statistics as a string
     std::ostringstream stats;
