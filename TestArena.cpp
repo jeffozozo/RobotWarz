@@ -185,7 +185,7 @@ for (size_t i = 0; i < obstacle_tests.size(); ++i) {
     arena3.m_board[result_row][result_col] = '.';
 
     // Reinitialize the robot if movement is disabled
-    if (jumperBot->get_move() == 0) 
+    if (jumperBot->get_move_speed() == 0) 
     {  
         jumperBot = std::make_unique<JumperRobot>();
         jumperBot->move_to(4, 1);
@@ -221,17 +221,17 @@ void TestArena::test_robot_creation() {
         std::cout << "\n----------------Testing RobotBase Creation----------------\n";
 
     TestRobot excessiveBot1(10, 10, flamethrower, "ExcessiveBot - 10,10");
-    print_test_result("ExcessiveBot move clamped at 5", excessiveBot1.get_move() == 5);
+    print_test_result("ExcessiveBot move clamped at 5", excessiveBot1.get_move_speed() == 5);
     print_test_result("ExcessiveBot armor clamped at 2", excessiveBot1.get_armor() == 2);
 
     TestRobot excessiveBot2(0, 10, flamethrower, "ExcessiveBot - 0,10");
-    std::cout << "bot2 move:" << excessiveBot2.get_move() << " armor:" << excessiveBot2.get_armor() << std::endl;
-    print_test_result("ExcessiveBot move clamped at 2", excessiveBot2.get_move() == 2);
+    std::cout << "bot2 move:" << excessiveBot2.get_move_speed() << " armor:" << excessiveBot2.get_armor() << std::endl;
+    print_test_result("ExcessiveBot move clamped at 2", excessiveBot2.get_move_speed() == 2);
     print_test_result("ExcessiveBot armor clamped at 5", excessiveBot2.get_armor() == 5);
 
 
     TestRobot negativeBot(-1, -1, flamethrower, "NegativeBot");
-    print_test_result("NegativeBot move clamped", negativeBot.get_move() == 2);
+    print_test_result("NegativeBot move clamped", negativeBot.get_move_speed() == 2);
     print_test_result("NegativeBot armor clamped", negativeBot.get_armor() == 0);
 }
 
@@ -252,7 +252,7 @@ void TestArena::test_handle_collision() {
     arena.m_board[3][3] = 'P';
     robot.move_to(3, 3);
     arena.handle_collision(&robot, 'P', 3, 3);
-    print_test_result("Collision with pit", !robot.get_move());
+    print_test_result("Collision with pit", !robot.get_move_speed());
 
     // Test collision with another robot
     arena.m_board[2][2] = 'R';

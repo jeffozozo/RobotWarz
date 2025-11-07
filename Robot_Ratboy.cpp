@@ -88,7 +88,7 @@ void get_move_direction(int& move_direction, int& move_distance) override
 {
     int current_row, current_col;
     get_current_location(current_row, current_col);
-    int move = get_move(); // Max movement range for this robot
+    int move = get_move_speed(); // Max movement range for this robot
 
     // Step 1: Move left until column == 0
     if (current_col > 0) 

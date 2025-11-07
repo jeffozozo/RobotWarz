@@ -50,7 +50,7 @@ public:
 
     int get_health();
     int get_armor();
-    int get_move();
+    int get_move_speed();
     int get_grenades();
     WeaponType get_weapon();
     void set_boundaries(int row_max, int col_max);

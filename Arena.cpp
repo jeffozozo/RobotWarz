@@ -610,7 +610,7 @@ std::string Arena::handle_move(RobotBase* robot)
     int move_distance;
 
     // Check if the robot cannot move
-    if (robot->get_move() == 0)
+    if (robot->get_move_speed() == 0)
     {
         ss << robot->m_name << " cannot move. ";
         return ss.str();
@@ -618,7 +618,7 @@ std::string Arena::handle_move(RobotBase* robot)
 
     // Get the direction and distance desired from the robot
     robot->get_move_direction(move_direction, move_distance);
-    move_distance = std::clamp(move_distance, 0, robot->get_move());
+    move_distance = std::clamp(move_distance, 0, robot->get_move_speed());
 
     // Check if no movement is requested
     if (move_direction < 1 || move_direction > 8  || move_distance == 0)

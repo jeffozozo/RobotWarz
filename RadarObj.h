@@ -5,7 +5,7 @@
 struct RadarObj 
 {
 
-    char m_type;  // 'R', 'M', 'F', 'P' (Robot, Mound, Flamethrower, Pit)
+    char m_type;  // 'X', 'R', 'M', 'F', 'P' (Dead Robot, Live Robot, Mound, Flamethrower, Pit)
     int m_row;    // Row of the object
     int m_col;    // Column of the object
 

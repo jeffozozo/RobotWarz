@@ -84,7 +84,7 @@ int RobotBase::get_armor()
 }
 
 // Get the robot's movement range
-int RobotBase::get_move()
+int RobotBase::get_move_speed()
 {
     return m_move;
 }

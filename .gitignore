@@ -1,3 +1,6 @@
 *.o
 *.txt
 *.so
+RobotWarz
+test_arena
+test_robot

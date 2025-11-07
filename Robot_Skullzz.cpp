@@ -97,7 +97,7 @@ public:
             direction = 6; // Southwest
         }
 
-        distance = std::min(get_move(), std::abs(delta_row) + std::abs(delta_col));
+        distance = std::min(get_move_speed(), std::abs(delta_row) + std::abs(delta_col));
 
         if (distance == 0) {
             reached_corner = true;
