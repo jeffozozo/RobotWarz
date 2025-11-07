@@ -51,7 +51,7 @@ public:
         return true; // Always try to shoot
     }
 
-    void get_movement(int& direction, int& distance) override {
+    void get_move_direction(int& direction, int& distance) override {
         direction = move_attempt % 9; // Cycle through all directions
         distance = (move_attempt % 3 == 0) ? 7 : -1; // Invalid distances
         move_attempt++;
@@ -67,7 +67,7 @@ public:
         m_name = "OutOfBoundsBot";
     }
 
-    void get_movement(int& direction, int& distance) override {
+    void get_move_direction(int& direction, int& distance) override {
         // Cycle through test cases
         switch (move_attempt++) {
             case 0: direction = 4; distance = 2; break;  // Valid move down and right
@@ -102,7 +102,7 @@ public:
         m_name = "BadMovesBot";
     }
 
-    void get_movement(int& direction, int& distance) override {
+    void get_move_direction(int& direction, int& distance) override {
         // Test invalid move scenarios
         switch (move_attempt++) {
             case 0: direction = 3; distance = 10; break; // Too far
@@ -134,7 +134,7 @@ public:
         m_name = "JumperBot";
     }
 
-    void get_movement(int& direction, int& distance) override {
+    void get_move_direction(int& direction, int& distance) override {
         direction = 3; // Always move right
         distance = 5;  // Try to jump over an obstacle
     }
@@ -160,7 +160,7 @@ public:
         m_name = name;
     }
 
-    void get_movement(int& direction, int& distance) override {
+    void get_move_direction(int& direction, int& distance) override {
         direction = 0; // This robot doesn't move
         distance = 0;  // No movement
     }

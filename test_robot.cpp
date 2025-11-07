@@ -93,7 +93,7 @@ void test_robot_behavior(RobotBase* robot)
 
         // Simulate movement
         int move_direction = 0, move_distance = 0;
-        robot->get_movement(move_direction, move_distance);
+        robot->get_move_direction(move_direction, move_distance);
 
         if (move_direction != 0 && move_distance != 0) 
         {

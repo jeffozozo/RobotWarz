@@ -891,26 +891,26 @@ void Arena::run_simulation(bool live)
             output(robot->print_stats(),log_file);
 
             //handle radar
-            if(robot->radar_enabled())
-            {
-                output( "  checking radar, direction: ", log_file);
-                int radar_dir;
-                robot->get_radar_direction(radar_dir);
-                outstring.str("");
-                outstring << radar_dir << " ... ";
-                output( outstring.str(),log_file );
-                get_radar_results(robot,radar_dir,radar_results);
+            output( "  checking radar, direction: ", log_file);
 
-                if(radar_results.empty())
-                    output( " found nothing. ",log_file);
-                else
-                {   outstring.str("");
-                    outstring << " found '" << radar_results[0].m_type << "' at (" << radar_results[0].m_row << "," << radar_results[0].m_col << ") ";
-                    output (outstring.str(),log_file);
-                }
+            int radar_dir;
+            
+            robot->get_radar_direction(radar_dir);
+            outstring.str("");
+            outstring << radar_dir << " ... ";
+            output( outstring.str(),log_file );
+            get_radar_results(robot,radar_dir,radar_results);
 
-                robot->process_radar_results(radar_results);
+            if(radar_results.empty())
+                output( " found nothing. ",log_file);
+            else
+            {   outstring.str("");
+                outstring << " found '" << radar_results[0].m_type << "' at (" << radar_results[0].m_row << "," << radar_results[0].m_col << ") ";
+                output (outstring.str(),log_file);
             }
+
+            robot->process_radar_results(radar_results);
+
 
             // Handle shoot or move
             int shot_row = 0, shot_col = 0;
