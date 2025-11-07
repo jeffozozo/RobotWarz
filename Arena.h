@@ -2,6 +2,7 @@
 #define __ARENA_H__
 
 #include "RobotBase.h"
+#include "RadarObj.h"
 #include <vector>
 #include <iostream>
 #include <iomanip>

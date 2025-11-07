@@ -6,20 +6,7 @@
 #include <vector>
 #include <utility>
 
-// This object could stand to have it's own file. But I just left it in here because... I'm cool like that.
-// This is basically a 'cell' in the board. it contains the 'char' indicating what is at that location
-// and the row and column. That's it. Don't add to this or change it and everyone's robots can work together.
-class RadarObj 
-{
-public:
-    char m_type;  // 'R', 'M', 'F', 'P' (Robot, Mound, Flamethrower, Pit)
-    int m_row;    // Row of the object
-    int m_col;    // Column of the object
-
-    // default constructor so you can make an empty one and fill it.
-    RadarObj() {} 
-    RadarObj(char type, int row, int col) : m_type(type), m_row(row), m_col(col) {}
-};
+#include "RadarObj.h"
 
 // this works for both movement and radar checks
 constexpr std::pair<int, int> directions[] = 
