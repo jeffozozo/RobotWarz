@@ -14,7 +14,7 @@ The game is rather straightforward. On it's turn, each robot will specify a dire
 
 **Specifications**
 
-* The arena is a 2 dimensional array width rows by height columns. row 0, col 0 is the upper left corner of the arena, and row n, column m is bottom right. 
+* The arena is a 2 dimensional array of 'cells.' row 0, col 0 is the upper left corner of the arena, and row n, column m is bottom right. 
 * The arena size is configurable. Min size is 10 x 10.
 * The robots occupy a single location, a 'cell' - only one robot per cell.
 * Robots inherit from the RobotBase class and must implement the pure virtual functions. RobotBase.h and RobotBase.cpp will be provided to you.
@@ -170,6 +170,10 @@ Flame-e-o ! (8,18) Health: 14 Armor: 0
 Squito % (9,8) - is out
 ```
 
+
+**Loading the Robots**
+
+The arena will look in the local directory when it runs, and any file named Robot_*.cpp will be loaded and compiled into a .so. Robots will inherit from RobotBase.cpp and will need to meet certain specifications. The code to compile the robots from .cpp to .so is here:
 
 
 

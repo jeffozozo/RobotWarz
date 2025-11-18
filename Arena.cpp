@@ -65,7 +65,6 @@ bool Arena::load_robots()
                     }
 
                     // Locate the factory function to create the robot
-                    using RobotFactory = RobotBase* (*)();
                     RobotFactory create_robot = (RobotFactory)dlsym(handle, "create_robot");
                     if (!create_robot) 
                     {

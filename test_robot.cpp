@@ -15,8 +15,8 @@ RobotBase* load_robot(const std::string& shared_lib, void* &handle)
         return nullptr;
     }
 
-    // Locate the factory function to create the robot and 'assign' it to this 'create_robot' function.
-    using RobotFactory = RobotBase* (*)();
+    // Locate the create function to create the robot and 'assign' the function to this 'create_robot' function.
+    // RobotFactory is a function pointer type 'typedef'ed in RobotBase.h
     RobotFactory create_robot = (RobotFactory)dlsym(handle, "create_robot");
     if (!create_robot) 
     {
@@ -142,9 +142,8 @@ void test_robot_behavior(RobotBase* robot)
 
 int main(int argc, char* argv[]) 
 {
-    // we didn't talk about command line arguments. This is how they work. 'argc' contains
-    // the number of arguments passed (including the name of the executable.)
-    // 'argv[]' contains the array of strings that were passed in.
+    //argv[1] should contain the name of the Robot_.cpp file to load.
+
     if (argc != 2) 
     {
         std::cerr << "Usage: " << argv[0] << " <robot_library>\n";
@@ -155,6 +154,7 @@ int main(int argc, char* argv[])
     const std::string shared_lib = "lib" + robot_file.substr(0, robot_file.find(".cpp")) + ".so";
 
     // Compile the robot into a shared library -fPIC is Position Independant Code - look it up!
+    // we're also linking a pre-compiled RobotBase.o - problems will arise if there is a mismatch...
     std::string compile_cmd = "g++ -shared -fPIC -o " + shared_lib + " " + robot_file + " RobotBase.o -I. -std=c++20";
     std::cout << "Compiling " << robot_file << " into " << shared_lib << "...\n";
 
@@ -162,6 +162,8 @@ int main(int argc, char* argv[])
         std::cerr << "Failed to compile " << robot_file << " into " << shared_lib << '\n';
         return 1;
     }
+
+    std::cout << "Success!" << std::endl;
 
     RobotBase *robot;
     void *handle;
