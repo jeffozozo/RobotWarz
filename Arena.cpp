@@ -658,14 +658,41 @@ std::string Arena::handle_move(RobotBase* robot)
         int next_col = std::clamp(current_col + delta_col, 0, m_size_col - 1);
         char cell = m_board[next_row][next_col];
 
-        // Check for obstacles or collisions
+        // Special case: Flamethrower cells do NOT block movement.
+        if (cell == 'F')
+        {
+            // Move into the flamethrower cell
+            m_board[current_row][current_col] = '.'; // Clear the current cell
+            robot->move_to(next_row, next_col);
+
+            ss << robot->m_name << " encounters a flamethrower at (" 
+               << next_row << "," << next_col << "). Taking damage! " << std::endl;
+            ss << apply_damage_to_robot(robot, flamethrower);
+
+            // If the robot dies on the F, leave a dead robot there and stop moving.
+            if (robot->get_health() <= 0)
+            {
+                m_board[next_row][next_col] = 'X';
+                return ss.str();
+            }
+
+            // Robot survived: it now occupies this cell and the F is effectively consumed.
+            m_board[next_row][next_col] = 'R';
+            current_row = next_row;
+            current_col = next_col;
+
+            // Continue with remaining movement steps (if any).
+            continue;
+        }
+
+        // Other obstacles or collisions behave as before.
         if (cell != '.')
         {
             ss << handle_collision(robot, cell, next_row, next_col);
             return ss.str();
         }
 
-        // Move the robot to the next cell
+        // Normal movement into empty cell
         m_board[current_row][current_col] = '.'; // Clear the current cell
         robot->move_to(next_row, next_col);
         m_board[next_row][next_col] = 'R'; // Mark the new position
@@ -699,9 +726,25 @@ std::string Arena::handle_collision(RobotBase* robot, char cell, int row, int co
             break;
 
         case 'P': // Pit
+        {
+            int cur_row, cur_col;
+            robot->get_current_location(cur_row, cur_col);
+
+            // Clear old position on the board
+            m_board[cur_row][cur_col] = '.';
+
+            // Move robot into the pit cell
+            robot->move_to(row, col);
+            m_board[row][col] = 'R';
+
+            // Disable movement forever
             robot->disable_movement();
-            ss << robot->m_name << " is stuck in a pit at (" << row << "," << col << "). Movement disabled. " << std::endl;
+
+            ss << robot->m_name << " is stuck in a pit at (" << row << "," << col 
+            << "). Movement disabled. " << std::endl;
             break;
+        }
+
 
         case 'F': // Flamethrower
             ss << robot->m_name << " encounters a flamethrower at ("  << row << "," << col << "). Taking damage! " << std::endl;
