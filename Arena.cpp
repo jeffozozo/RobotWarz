@@ -32,75 +32,92 @@ bool Arena::load_robots()
 
     try 
     {
-        // Scan the current directory for Robot_<name>.cpp files
-        for (const auto& entry : fs::directory_iterator(".")) 
+        // Scan the robots/ directory for Robot_<name>.cpp files
+        for (const auto& entry : fs::directory_iterator("robots")) 
         {
-            if (entry.is_regular_file()) 
+            if (!entry.is_regular_file())
             {
-                std::string filename = entry.path().filename().string();
+                continue;
+            }
 
-                // Check if the file matches the naming pattern Robot_<name>.cpp
-                if (filename.rfind("Robot_", 0) == 0 && filename.substr(filename.size() - 4) == ".cpp") 
+            fs::path path = entry.path();
+            std::string filename = path.filename().string();   // e.g. "Robot_Foo.cpp"
+
+            // Check if the file matches the naming pattern Robot_<name>.cpp
+            if (filename.rfind("Robot_", 0) == 0 && path.extension() == ".cpp") 
+            {
+                // filename = "Robot_<name>.cpp"
+                // robot_name = "<name>"
+                std::string robot_name = filename.substr(6, filename.size() - 10);
+
+                // Full path to the source file in robots/
+                std::string source_path = path.string();
+
+                // Put the shared library in the current directory (or change to "robots/lib..." if you prefer)
+                std::string shared_lib = "lib" + robot_name + ".so";
+
+                // Compile the file into a shared library
+                std::string compile_cmd =
+                    "g++ -shared -fPIC -std=c++20 -I. "
+                    " -o " + shared_lib +
+                    " " + source_path +
+                    " RobotBase.o";
+
+                std::cout << "Compiling " << source_path << " to " << shared_lib << "...\n";
+
+                int compile_result = std::system(compile_cmd.c_str());
+                if (compile_result != 0) 
                 {
-                    std::string robot_name = filename.substr(6, filename.size() - 10); // Extract <name>
-                    std::string shared_lib = "lib" + robot_name + ".so";
+                    std::cerr << "Failed to compile " << source_path
+                              << " with command: " << compile_cmd << std::endl;
+                    continue;
+                }
 
-                    // Compile the file into a shared library
-                    std::string compile_cmd = "g++ -shared -fPIC -o " + shared_lib + " " + filename + " RobotBase.o -I. -std=c++20";
-                    std::cout << "Compiling " << filename << " to " << shared_lib << "...\n";
+                // Load the shared library dynamically
+                void* handle = dlopen(shared_lib.c_str(), RTLD_LAZY);
+                if (!handle) 
+                {
+                    std::cerr << "Failed to load " << shared_lib
+                              << ": " << dlerror() << std::endl;
+                    continue;
+                }
 
-                    int compile_result = std::system(compile_cmd.c_str());
-                    if (compile_result != 0) 
+                // Locate the factory function to create the robot
+                RobotFactory create_robot = (RobotFactory)dlsym(handle, "create_robot");
+                if (!create_robot) 
+                {
+                    std::cerr << "Failed to find create_robot in " << shared_lib
+                              << ": " << dlerror() << std::endl;
+                    dlclose(handle);
+                    continue;
+                }
+
+                // Instantiate the robot and add it to the m_robots list
+                RobotBase* robot = create_robot();
+                if (robot) 
+                {
+                    robot->m_name = robot_name;
+                    robot->set_boundaries(m_size_row, m_size_col);
+                    std::cout << "boundaries: " << m_size_row << ", " << m_size_col << std::endl;
+
+                    int row, col;
+                    do 
                     {
-                        std::cerr << "Failed to compile " << filename << " with command: " << compile_cmd << std::endl;
-                        continue;
-                    }
+                        row = std::rand() % m_size_row;
+                        col = std::rand() % m_size_col;
+                    } while (m_board[row][col] != '.');
 
-                    // Load the shared library dynamically
-                    void* handle = dlopen(shared_lib.c_str(), RTLD_LAZY);
-                    if (!handle) 
-                    {
-                        std::cerr << "Failed to load " << shared_lib << ": " << dlerror() << std::endl;
-                        continue;
-                    }
+                    robot->move_to(row, col);
+                    m_board[row][col] = 'R';
+                    m_robots.push_back(robot);
 
-                    // Locate the factory function to create the robot
-                    RobotFactory create_robot = (RobotFactory)dlsym(handle, "create_robot");
-                    if (!create_robot) 
-                    {
-                        std::cerr << "Failed to find create_robot in " << shared_lib << ": " << dlerror() << std::endl;
-                        dlclose(handle);
-                        continue;
-                    }
-
-                    // Instantiate the robot and add it to the m_robots list
-                    RobotBase* robot = create_robot();
-                    if (robot) 
-                    {
-                        //setup the robot
-                        robot->m_name = robot_name;
-                        robot->set_boundaries(m_size_row,m_size_col);
-                        std::cout << "boundaries: " << m_size_row << ", " << m_size_col << std::endl;
- 
-                        // Find a random valid position for the robot
-                        int row, col;
-                        do 
-                        {
-                            row = std::rand() % m_size_row;
-                            col = std::rand() % m_size_col;
-                        } while (m_board[row][col] != '.'); // Ensure it's an empty spot
-
-                        robot->move_to(row, col);
-                        m_board[row][col] = 'R'; // Mark the robot's position on the board
-                        m_robots.push_back(robot);
-
-                        std::cout << "Loaded robot: " << robot_name << " at (" << row << ", " << col << ")\n";
-                    } 
-                    else 
-                    {
-                        std::cerr << "Failed to create robot from " << shared_lib << std::endl;
-                        dlclose(handle);
-                    }
+                    std::cout << "Loaded robot: " << robot_name
+                              << " at (" << row << ", " << col << ")\n";
+                }
+                else 
+                {
+                    std::cerr << "Failed to create robot from " << shared_lib << std::endl;
+                    dlclose(handle);
                 }
             }
         }
@@ -111,7 +128,7 @@ bool Arena::load_robots()
         return false;
     }
 
-    return !m_robots.empty(); // Return true if at least one robot was loaded
+    return !m_robots.empty();
 }
 
 
@@ -745,7 +762,7 @@ void Arena::print_board(int round, std::ostream& out, bool clear_screen) const {
     if (clear_screen) {
         // Clear the screen
         if (&out == &std::cout) { // Only clear the screen for console output
-            std::cout << "\033[2J\033[1;1H"; // ANSI escape code to clear screen and reset cursor
+            std::cout << "\x1b[2J\x1b[H"; // ANSI escape code to clear screen and reset cursor
         }
     }
 
@@ -836,7 +853,7 @@ void Arena::output(std::string text, std::ostream& file)
 // assumes robots have been loaded.
 void Arena::run_simulation(bool live) 
 {
-    std::stringstream ss;
+    
 
     std::vector<RadarObj> radar_results;
     std::ostringstream outstring;
@@ -864,6 +881,7 @@ void Arena::run_simulation(bool live)
 
         for (auto* robot : m_robots) 
         {
+            std::stringstream ss;
             robot->get_current_location(row, col);
             robot_id = unique_char[get_robot_index(row, col)];
 

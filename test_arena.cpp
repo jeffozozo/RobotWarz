@@ -31,5 +31,8 @@ int main() {
     tester.test_grenade_damage();
 
 
+	//print the summary
+	tester.print_summary();
+
     return 0;
 }

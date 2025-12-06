@@ -1,22 +1,41 @@
 #include "TestArena.h"
 #include <iomanip> // For std::setw
 
-void TestArena::print_test_result(const std::string& test_name, bool condition) {
+bool TestArena::print_test_result(const std::string& test_name, bool condition) {
+	
+	bool result = true;
+
     const std::string green = "\033[32m";  // ANSI escape code for green
     const std::string red = "\033[31m";    // ANSI escape code for red
     const std::string reset = "\033[0m";   // ANSI escape code to reset color
     
     if (condition) {
         std::cout << green << "\n[ok]" << reset ;
+		result = true;
     } else {
         std::cout << red << "\n[failed]" << reset ;
+		result = false;
     }
 
     std::cout << "  Test: " << test_name << std::endl;
+
+	return result;
 }
+
+void TestArena::print_summary()
+{
+	for(auto line : test_log)
+	{
+		std::cout << line << "\n";
+	}
+}
+
 
 void TestArena::test_initialize_board() 
 {
+	bool result;
+    std::string result_string;
+
     std::cout << "\tTesting initialize_board...\n";
     Arena arena(10, 10);
     arena.initialize_board();
@@ -40,22 +59,28 @@ void TestArena::test_initialize_board()
         }
     }
 
-    print_test_result("Board contains only valid characters", board_initialized);
+    result = print_test_result("Board contains only valid characters", board_initialized);
+    result ? result_string = "Initialize board: passed" : result_string = "Initialize board: failed";
+	test_log.push_back("Initialize board: " + result_string);
+
+
 }
 
 
 // Test handle_move
 
 void TestArena::test_handle_move() {
+	
+
     std::cout << "\n----------------Testing handle_move----------------\n";
-    Arena arena1(10, 10);
+    Arena arena1(8, 8);
     arena1.initialize_board(true); //empty board
 
     // **Test 1: Boundary conditions with RobotOutOfBounds**
     std::cout << "\t*** testing out of bounds: \n" << std::endl;
     RobotOutOfBounds robotOutOfBounds;
     robotOutOfBounds.move_to(5, 5); // Start the robot at (5, 5)
-    robotOutOfBounds.set_boundaries(10, 10);
+    robotOutOfBounds.set_boundaries(8, 8);
 
     struct TestCase {
         int start_row, start_col;
@@ -67,8 +92,8 @@ void TestArena::test_handle_move() {
         {5, 5, 7, 7, "Boundary movement case 1 (valid move to (7,7))"},
         {9, 9, 9, 9, "Boundary movement case 2 (move out of bounds right to (9,9))"},
         {9, 9, 9, 9, "Boundary movement case 3 (move out of bounds down to (9,9))"},
-        {0, 0, 0, 0, "Boundary movement case 4 (move out of bounds up to (0,0))"},
-        {0, 0, 0, 0, "Boundary movement case 5 (move out of bounds left to (0,0))"}
+        {-1, 0, 0, 0, "Boundary movement case 4 (move out of bounds up to (-0,0))"},
+        {0, -1, 0, 0, "Boundary movement case 5 (move out of bounds left to (0,-1))"}
     };
 
     for (size_t i = 0; i < boundary_tests.size(); ++i) {

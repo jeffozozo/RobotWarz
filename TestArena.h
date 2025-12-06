@@ -4,6 +4,7 @@
 #include "Arena.h"
 #include "RobotBase.h"
 #include <vector>
+#include <string>
 #include <iostream>
 
 class TestArena {
@@ -17,9 +18,13 @@ public:
     void test_grenade_damage();
     void test_radar();
     void test_radar_local();
+	void print_summary();
 
 private:
-    void print_test_result(const std::string& test_name, bool condition);
+	
+	std::vector<std::string> test_log;
+
+    bool print_test_result(const std::string& test_name, bool condition);
 };
 
 class TestRobot : public RobotBase {

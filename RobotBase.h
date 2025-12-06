@@ -1,5 +1,4 @@
-#ifndef __ROBOTBASE_H__
-#define __ROBOTBASE_H__
+#pragma once
 
 #include <string>
 #include <iostream>
@@ -24,9 +23,6 @@ constexpr std::pair<int, int> directions[] =
 
 // read about enums these are really just ints. 0-3.
 enum WeaponType { flamethrower, railgun, grenade, hammer };
-
-// to aid in the creation of the robots as shared objects.
-typedef RobotBase* (*RobotFactory)();
 
 // don't change anything in here. Understand it though...
 class RobotBase 
@@ -77,5 +73,8 @@ public:
     virtual ~RobotBase();
 };
 
-#endif
+
+// to aid in the creation of the robots as shared objects.
+typedef RobotBase* (*RobotFactory)();
+
 
