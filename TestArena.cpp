@@ -309,7 +309,6 @@ void TestArena::test_robot_creation() {
     ok = print_test_result("NegativeBot move clamped", negativeBot.get_move_speed() == 2);
     module_passed &= ok;
 
-    // *** UPDATED EXPECTATION ***
     ok = print_test_result("NegativeBot armor clamped", negativeBot.get_armor() == 0);
     module_passed &= ok;
 
