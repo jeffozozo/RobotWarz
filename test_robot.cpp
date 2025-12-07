@@ -1,6 +1,7 @@
 #include "RobotBase.h"
 #include <iostream>
 #include <vector>
+#include <algorithm>
 #include <dlfcn.h>
 
 RobotBase* load_robot(const std::string& shared_lib, void* &handle) 
@@ -48,7 +49,7 @@ void test_robot_behavior(RobotBase* robot)
 
     // Print robot stats
     std::cout << "Robot Stats:" << std::endl;
-    robot->print_stats();
+    std::cout << robot->print_stats() << std::endl;
 
     int inactive_turns = 0;
 
@@ -57,6 +58,9 @@ void test_robot_behavior(RobotBase* robot)
 
         bool took_action = false;
 
+        // Validate radar direction before using it
+        // Valid values are 0-8 (0 = local scan, 1-8 = directions)
+
         // Simulate radar results
         std::vector<RadarObj> radar_results;
         int radar_direction = 0;
@@ -64,6 +68,11 @@ void test_robot_behavior(RobotBase* robot)
         // Call get_radar_direction and simulate radar scanning
         robot->get_radar_direction(radar_direction);
         std::cout << "Radar direction chosen: " << radar_direction << std::endl;
+        if (radar_direction < 0 || radar_direction > 8)
+        {
+            std::cerr << "Warning: invalid radar direction " << radar_direction
+                      << " (expected 0-8)." << std::endl;
+        }
 
         if (turn == 2) {
             // Simulate detecting an enemy on turn 2
@@ -77,13 +86,21 @@ void test_robot_behavior(RobotBase* robot)
         int shot_row = 0, shot_col = 0;
         if (robot->get_shot_location(shot_row, shot_col)) {
             std::cout << "Robot shoots at (" << shot_row << ", " << shot_col << ").\n";
+
+            // Bounds check on requested shot
+            if (shot_row < 0 || shot_row >= 20 || shot_col < 0 || shot_col >= 20) {
+                std::cerr << "Warning: shot location (" << shot_row << ", " << shot_col
+                          << ") is outside the 20x20 arena bounds used by this tester." << std::endl;
+            }
+
             if (!radar_results.empty()) {
                 const auto& enemy = radar_results[0];
                 if (shot_row == enemy.m_row && shot_col == enemy.m_col) {
                     std::cout << "Shot location matches radar target: (" << enemy.m_row << ", " << enemy.m_col << ").\n";
                 } else {
-                    std::cerr << "Error: Shot location (" << shot_row << ", " << shot_col
-                              << ") does not match radar target (" << enemy.m_row << ", " << enemy.m_col << ").\n";
+                    std::cerr << "Note: shot location (" << shot_row << ", " << shot_col
+                              << ") does not match first radar target (" << enemy.m_row << ", " << enemy.m_col
+                              << ") — robot may be aiming elsewhere.\n";
                 }
             }
             took_action = true;
@@ -95,35 +112,42 @@ void test_robot_behavior(RobotBase* robot)
         int move_direction = 0, move_distance = 0;
         robot->get_move_direction(move_direction, move_distance);
 
-        if (move_direction != 0 && move_distance != 0) 
-        {
-            // Predefined directional increments for movement (1-8, clock directions) come from RobotBase
-            int delta_row = directions[move_direction].first;
-            int delta_col = directions[move_direction].second;
-
-            // Calculate new position
-            int current_row, current_col;
-            robot->get_current_location(current_row, current_col);
-            int target_row = std::clamp(current_row + delta_row * move_distance, 0, 19);
-            int target_col = std::clamp(current_col + delta_col * move_distance, 0, 19);
-
-            // Move the robot
-            robot->move_to(target_row, target_col);
-
-            std::cout << "Robot moves to (" << target_row << ", " << target_col << ").\n";
-
-            // Verify the movement
-            int verify_row, verify_col;
-            robot->get_current_location(verify_row, verify_col);
-            if (verify_row == target_row && verify_col == target_col) {
-                std::cout << "Movement verified!\n";
-            } else {
-                std::cerr << "Error: Robot did not move to the expected location!\n";
-            }
-
-            took_action = true;
+        // If the robot is immobilized (e.g., in a pit), mimic the Arena behavior
+        if (robot->get_move_speed() == 0) {
+            std::cout << "Robot cannot move (move_speed == 0).\n";
         } else {
-            std::cout << "Robot chooses not to move.\n";
+            if (move_direction < 1 || move_direction > 8 || move_distance <= 0) {
+                std::cout << "Robot chooses not to move.\n";
+            } else {
+                // Cap requested distance by the robot's allowed move speed
+                move_distance = std::clamp(move_distance, 0, robot->get_move_speed());
+
+                // Predefined directional increments for movement (1-8, clock directions) come from RobotBase
+                int delta_row = directions[move_direction].first;
+                int delta_col = directions[move_direction].second;
+
+                // Calculate new position within a 20x20 test arena
+                int current_row, current_col;
+                robot->get_current_location(current_row, current_col);
+                int target_row = std::clamp(current_row + delta_row * move_distance, 0, 19);
+                int target_col = std::clamp(current_col + delta_col * move_distance, 0, 19);
+
+                // Move the robot
+                robot->move_to(target_row, target_col);
+
+                std::cout << "Robot moves to (" << target_row << ", " << target_col << ").\n";
+
+                // Verify the movement
+                int verify_row, verify_col;
+                robot->get_current_location(verify_row, verify_col);
+                if (verify_row == target_row && verify_col == target_col) {
+                    std::cout << "Movement verified!\n";
+                } else {
+                    std::cerr << "Error: Robot did not move to the expected location!\n";
+                }
+
+                took_action = true;
+            }
         }
 
         // Check for inactivity

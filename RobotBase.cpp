@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <algorithm>
 
 
 //overload the << operator to print the weapon type - handy.
@@ -31,36 +32,51 @@ RobotBase::RobotBase(int move_in, int armor_in, WeaponType weapon_in)
     }
 
 
-    // Validate move input
-    if (move_in < 2)
+    // Enforce 7‑point budget with bounds 2..5 for both move and armor.
+    int move  = std::clamp(move_in,  2, 5);
+    int armor = std::clamp(armor_in, 2, 5);
+
+    int total = move + armor;
+
+    if (total < 7)
     {
-        m_move = 2;
+        int deficit = 7 - total;
+
+        // Prefer adding to armor first
+        int can_add_armor = 5 - armor;
+        int add_to_armor = std::min(deficit, can_add_armor);
+        armor += add_to_armor;
+        deficit -= add_to_armor;
+
+        if (deficit > 0)
+        {
+            int can_add_move = 5 - move;
+            int add_to_move = std::min(deficit, can_add_move);
+            move += add_to_move;
+            deficit -= add_to_move;
+        }
     }
-    else if (move_in > 5)
+    else if (total > 7)
     {
-        m_move = 5;
-    }
-    else
-    {
-        m_move = move_in;
+        int excess = total - 7;
+
+        // Prefer reducing armor first
+        int can_sub_armor = armor - 2;
+        int sub_from_armor = std::min(excess, can_sub_armor);
+        armor -= sub_from_armor;
+        excess -= sub_from_armor;
+
+        if (excess > 0)
+        {
+            int can_sub_move = move - 2;
+            int sub_from_move = std::min(excess, can_sub_move);
+            move -= sub_from_move;
+            excess -= sub_from_move;
+        }
     }
 
-    // Calculate maximum armor based on the move value
-    int max_armor = 7 - m_move;
-
-    // Validate armor input
-    if (armor_in < 0)
-    {
-        m_armor = 0;
-    }
-    else if (armor_in > max_armor)
-    {
-        m_armor = max_armor;
-    }
-    else
-    {
-        m_armor = armor_in;
-    }
+    m_move  = move;
+    m_armor = armor;
 
     // blank out location
     m_location_row = 0;

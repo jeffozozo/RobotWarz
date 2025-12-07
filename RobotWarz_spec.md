@@ -18,7 +18,7 @@ On it's turn, each robot will specify a direction for their radar to look (obser
 * The arena size is configurable. Min size is 10 x 10.
 * The robots occupy a single location, a 'cell' - only one robot per cell.
 * Robots inherit from the RobotBase class and must implement the pure virtual functions. RobotBase.h and RobotBase.cpp will be provided to you.
-* The robot .cpp files are placed into the same directory as the arena, and when the game loads, the arena will compile the robots into .so (shared objects) using the arena's RobotBase.o  
+* The robot .cpp files are placed into a `robots/` subdirectory next to the arena executable. When the game loads, the arena will compile each `Robot_*.cpp` into a `.so` (shared object) using the arena's prebuilt `RobotBase.o`.
 * The arena will store all the robots in a vector of robots.
 * The 'game loop' loops through each robot in the vector and calls functions on the them to orchestrate the action.
 * The steps that the arena takes when it runs are as follows:
@@ -133,8 +133,8 @@ You are free to print out the arena state however you like. One way might be to 
  5   .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .
  6   .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .
  7   .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .
- 8   .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . X&  R! .
- 9   .  .  .  .  .  .  .  . X%  .  .  .  .  .  .  .  .  .  .  .
+ 8   .  .  .  .  .  .  .  .  .  .  .  .  .  .  . X&  R! .  .  .
+ 9   .  .  .  .  .  .  .  .  X% .  .  .  .  .  .  .  .  .  .  .
 10   .  .  F  .  .  .  .  .  .  .  .  .  .  M  .  .  .  .  .  .
 11   .  .  .  .  .  .  .  .  .  .  .  .  .  F  .  .  .  .  .  .
 12   .  .  M  .  .  .  .  .  .  .  .  .  F  .  .  .  .  .  .  .
@@ -176,53 +176,20 @@ Squito % (9,8) - is out
 
 **Loading the Robots**
 
-The arena will look in the local directory when it runs, and any file named Robot_*.cpp will be loaded and compiled into an .so. Robots will inherit from RobotBase.cpp and will need to meet certain specifications. The arena will have pre-build RobotBase.o and that will be linked at the time of compile for the robots (look closely at the command below - it has RobotBase.o in it) Here is some sample code. This is NOT complete code, you'll need to read it, understand it and write it into a loop that YOU write to read the robot files from your directory and load them into a vector. 
+The arena will look in a `robots/` subdirectory when it runs, and any file named `Robot_*.cpp` in that folder will be compiled into a shared library and loaded. Robots must inherit from `RobotBase` and implement the required virtual methods. The arena has a prebuilt `RobotBase.o` that is linked at compile time for the robots.
 
+At startup, the arena does roughly the following:
+1. Iterate over all files in the `robots/` directory.
+2. For each file whose name matches `Robot_*.cpp`:
+   * Extract the robot's name from the filename (everything after `Robot_` and before `.cpp`).
+   * Compile it into a shared library named `lib<name>.so` using a command like:
+     `g++ -shared -fPIC -std=c++20 -I. -o lib<name>.so robots/Robot_<name>.cpp RobotBase.o`
+   * Use `dlopen` to load the shared library and `dlsym` to find the exported factory function:
+     `extern "C" RobotBase* create_robot();`
+   * Call `create_robot()` to get a `RobotBase*` instance.
+   * Set `m_name` on the robot to the extracted name and call `set_boundaries()` so it knows the arena size.
+   * Place the robot at a random empty location on the board (never on an obstacle) and mark that cell as containing a robot.
 
-// Compile the file into a shared library - put this in a loop that traverses an array of all the robot.cpp files...
-std::string compile_cmd = "g++ -shared -fPIC -o " + shared_lib + " " + filename + " RobotBase.o -I. -std=c++20";
-std::cout << "Compiling " << filename << " to " << shared_lib << "...\n";
-
-int compile_result = std::system(compile_cmd.c_str());
-if (compile_result != 0) 
-{
-    std::cerr << "Failed to compile " << filename << " with command: " << compile_cmd << std::endl;
-    continue;
-}
-
-//  ...
-
-//to load the shared objects:
-void* handle = dlopen(shared_lib.c_str(), RTLD_LAZY);
-if (!handle) 
-{
-    std::cerr << "Failed to load " << shared_lib << ": " << dlerror() << std::endl;
-    continue;
-}
-
-// to Locate the factory function to create the robot (note: RobotBase has a typedef for RobotFactory... go look at it!)
-RobotFactory create_robot = (RobotFactory)dlsym(handle, "create_robot");
-if (!create_robot) 
-{
-    std::cerr << "Failed to find create_robot in " << shared_lib << ": " << dlerror() << std::endl;
-    dlclose(handle);
-    continue;
-}
-
-// To Instantiate the robot, you call the function that you LOADED from the shared library:
-// you'll want to ensure that this function worked and then add this robot to a vector of robots. 
-// set it up how you like...
-RobotBase* robot = create_robot();
-
-
-
-
-
-
-
-
-
-
-
+All of this is done before the main simulation loop starts, so by the time the game runs, `m_robots` contains one instance for each compiled robot in the `robots/` directory.
 
 
