@@ -7,16 +7,30 @@
 #include <iostream>
 #include <iomanip>
 #include <set>
+#include <string>
 
 class TestArena; // Forward declaration of the test class
+
+enum class ObstacleDensity
+{
+    Low,
+    Medium,
+    High
+};
 
 class Arena {
     friend class TestArena; // Allow the test class to access private members
 
 private:
+    
+    bool m_live;
     int m_size_row, m_size_col;
+    std::set<std::pair<int,int>> m_flamethrowers; 
     std::vector<std::vector<char>> m_board;
     std::vector<RobotBase*> m_robots;
+
+    int m_max_rounds;
+    ObstacleDensity m_obstacle_density;
 
     //radar 
     void scan_location(int row, int col, std::vector<RadarObj>& radar_results);
@@ -41,12 +55,15 @@ private:
     int get_robot_index(int row, int col) const;
 
 public:
+
     Arena(int row_in, int col_in);
+    Arena(const std::string& config_path);
+    bool load_config(const std::string& config_path);
     bool load_robots();
     void output(std::string text,std::ostream& out_file);
     void initialize_board(bool empty=false);
     void print_board(int round, std::ostream& out, bool clear_screen) const;
-    void run_simulation(bool live = false);
+    void run_simulation();
 };
 
 #endif

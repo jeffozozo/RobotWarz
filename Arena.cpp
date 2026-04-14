@@ -1,3 +1,4 @@
+#include <cctype>
 #include "Arena.h"
 #include "RobotBase.h"
 #include <filesystem>
@@ -17,12 +18,128 @@ static const char unique_char[] = {
     ':', ';', '"', '\'', '<', '>', ',', '.', '?', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
 };
 
-// Constructor - Set the size of the arena
+// Constructor - Set the size of the arena directly
 Arena::Arena(int row_in, int col_in) 
 {
     m_size_row = row_in;
     m_size_col = col_in;
+
+    // Defaults when not using a config file
+    m_max_rounds = 100000;
+    m_obstacle_density = ObstacleDensity::Medium;
+
     m_board.resize(m_size_row, std::vector<char>(m_size_col, '.'));
+    m_live = false;
+}
+
+// Constructor that loads settings from a config file
+Arena::Arena(const std::string& config_path)
+{
+    // Sensible defaults before reading config
+    m_size_row = 20;
+    m_size_col = 20;
+    m_max_rounds = 100000;
+    m_obstacle_density = ObstacleDensity::Medium;
+    m_live = false;
+
+    if (!load_config(config_path))
+    {
+        std::cerr << "Warning: Could not load config file '"
+                  << config_path << "'. Using defaults.\n";
+    }
+
+    m_board.resize(m_size_row, std::vector<char>(m_size_col, '.'));
+}
+
+bool Arena::load_config(const std::string& config_path)
+{
+    std::ifstream in(config_path);
+    if (!in)
+    {
+        std::cerr << "Failed to open config file: " << config_path << std::endl;
+        return false;
+    }
+
+    std::string line;
+
+    auto trim = [](std::string& s) {
+        while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front())))
+            s.erase(s.begin());
+        while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back())))
+            s.pop_back();
+    };
+
+    while (std::getline(in, line))
+    {
+        // Skip empty lines and comment lines starting with '#'
+        if (line.empty() || line[0] == '#')
+            continue;
+
+        std::size_t eq_pos = line.find('=');
+        if (eq_pos == std::string::npos)
+            continue;
+
+        std::string key = line.substr(0, eq_pos);
+        std::string value = line.substr(eq_pos + 1);
+        trim(key);
+        trim(value);
+
+        if (key == "GameMode")
+        {
+            std::string v = value;
+            std::transform(v.begin(), v.end(), v.begin(),
+                           [](unsigned char c){ return static_cast<char>(std::tolower(c)); });
+
+            if (v == "live")
+                m_live = true;
+            else
+                m_live = false;
+        }
+
+        if (key == "ArenaSize")
+        {
+            // Expect "rows,cols"
+            std::size_t comma_pos = value.find(',');
+            if (comma_pos != std::string::npos)
+            {
+                std::string rows_str = value.substr(0, comma_pos);
+                std::string cols_str = value.substr(comma_pos + 1);
+                trim(rows_str);
+                trim(cols_str);
+
+                int rows = std::stoi(rows_str);
+                int cols = std::stoi(cols_str);
+
+                m_size_row = rows;
+                m_size_col = cols;
+                
+				
+            }
+        }
+        else if (key == "MaxRounds")
+        {
+            int rounds = std::stoi(value);
+            if (rounds > 0)
+            {
+                m_max_rounds = rounds;
+            }
+        }
+        else if (key == "ObstacleDensity")
+        {
+            std::string v = value;
+            std::transform(v.begin(), v.end(), v.begin(),
+                           [](unsigned char c){ return static_cast<char>(std::tolower(c)); });
+
+            if (v == "low")
+                m_obstacle_density = ObstacleDensity::Low;
+            else if (v == "high")
+                m_obstacle_density = ObstacleDensity::High;
+            else
+                m_obstacle_density = ObstacleDensity::Medium;
+        }
+    }
+
+    return true;
 }
 
 bool Arena::load_robots() 
@@ -693,7 +810,15 @@ std::string Arena::handle_move(RobotBase* robot)
         }
 
         // Normal movement into empty cell
-        m_board[current_row][current_col] = '.'; // Clear the current cell
+        if(m_flamethrowers.count({current_row, current_col}) > 0)
+        {
+            m_board[current_row][current_col] = 'F'; // put the flame thrower back.
+        }
+        else
+        {
+            m_board[current_row][current_col] = '.'; // Clear the current cell
+        }
+        
         robot->move_to(next_row, next_col);
         m_board[next_row][next_col] = 'R'; // Mark the new position
         current_row = next_row;
@@ -773,7 +898,18 @@ void Arena::initialize_board(bool empty)
 
     // Determine the maximum number of obstacles based on the size of the board
     int total_cells = m_size_row * m_size_col;
-    int max_obstacles = (total_cells > 500) ? 10 : std::min(8, total_cells / 100);
+    int base_max_obstacles = (total_cells > 500) ? 10 : std::min(8, total_cells / 100);
+
+    // Scale by configured density
+    double density_factor = 1.0; // Medium
+    if (m_obstacle_density == ObstacleDensity::Low)
+        density_factor = 0.5;
+    else if (m_obstacle_density == ObstacleDensity::High)
+        density_factor = 1.5;
+
+    int max_obstacles = static_cast<int>(base_max_obstacles * density_factor);
+    if (max_obstacles < 0)
+        max_obstacles = 0;
 
     // Obstacle types to place
     std::vector<char> obstacle_types = {'M', 'P', 'F'};
@@ -796,12 +932,19 @@ void Arena::initialize_board(bool empty)
 
             // Place the obstacle
             m_board[row][col] = obstacle;
+
+            if(obstacle == 'F')
+                m_flamethrowers.insert({row, col});
+                
         }
     }
 
 }
 
 void Arena::print_board(int round, std::ostream& out, bool clear_screen) const {
+    
+    std::vector<std::string> bot_list;
+
     if (clear_screen) {
         // Clear the screen
         if (&out == &std::cout) { // Only clear the screen for console output
@@ -834,6 +977,7 @@ void Arena::print_board(int round, std::ostream& out, bool clear_screen) const {
                 if (bot_index != -1) {
                     // Append the unique character to 'R' or 'X'
                     out << std::setw(col_width - 1) << cell << unique_char[bot_index];
+                    bot_list.push_back(unique_char[bot_index]+m_robots[bot_index]->m_name);
                 } else {
                     // Default display if robot index is invalid
                     out << std::setw(col_width) << cell;
@@ -845,6 +989,16 @@ void Arena::print_board(int round, std::ostream& out, bool clear_screen) const {
         }
         out << std::endl;
     }
+
+    if(round==0)
+    {
+
+        for(auto bot : bot_list )
+        {
+            out << bot << std::endl;
+        }
+    }
+
 }
 
 int Arena::get_robot_index(int row, int col) const
@@ -894,10 +1048,9 @@ void Arena::output(std::string text, std::ostream& file)
 
 // Run the simulation
 // assumes robots have been loaded.
-void Arena::run_simulation(bool live) 
+void Arena::run_simulation() 
 {
     
-
     std::vector<RadarObj> radar_results;
     std::ostringstream outstring;
 
@@ -914,12 +1067,12 @@ void Arena::run_simulation(bool live)
     }
 
     int round = 0;
-    while(!winner() && round < 1000000)
+    while(!winner() && round < m_max_rounds)
     {
         int row, col;
         char robot_id;
 
-        print_board(round, std::cout, live);
+        print_board(round, std::cout, m_live);
         print_board(round, log_file, false);
 
         for (auto* robot : m_robots) 
@@ -990,7 +1143,7 @@ void Arena::run_simulation(bool live)
         }
 
         // Pause for 1 second if live is true
-        if (live)
+        if (m_live)
         {
             sleep(1); // Plain C-style sleep
         }

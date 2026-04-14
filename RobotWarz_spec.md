@@ -15,16 +15,16 @@ On it's turn, each robot will specify a direction for their radar to look (obser
 **Specifications**
 
 * The arena is a 2 dimensional array of 'cells.' row 0, col 0 is the upper left corner of the arena, and row n, column m is bottom right. 
-* The arena size is configurable. Min size is 10 x 10.
+* The arena size is configurable. There doesn't have to be a minimum or a maximum size, but 20x20 is a good starting point.
 * The robots occupy a single location, a 'cell' - only one robot per cell.
 * Robots inherit from the RobotBase class and must implement the pure virtual functions. RobotBase.h and RobotBase.cpp will be provided to you.
 * The robot .cpp files are placed into a `robots/` subdirectory next to the arena executable. When the game loads, the arena will compile each `Robot_*.cpp` into a `.so` (shared object) using the arena's prebuilt `RobotBase.o`.
-* The arena will store all the robots in a vector of robots.
-* The 'game loop' loops through each robot in the vector and calls functions on the them to orchestrate the action.
+* The arena will store all the robots in a vector of robot objects.
+* The 'game loop' is 'turn based' and repeatedly enumerates through each robot in the vector calling functions on the them to orchestrate the action.
 * The steps that the arena takes when it runs are as follows:
     1. load a config file that specifies the parameters (arena size, number and type of obstacles, max number of rounds, if you want to watch the game live or not)
     2. place obstacles in the arena (M - Mound, P - Pit or F - Flamethrower)
-    3. load the robots into a vector, assign a text character to represent the robot (like & or @) and place them randomly in the arena. When placing a robot, do not place it on an obstacle. 
+    3. load the robots into a vector, assign a text character to represent the robot (like & or @) and place them randomly in the arena. When placing a robot, do not place it on an obstacle or each other. 
     4. Loop through each robot in the vector:
         1. print the number of the current round
         2. print the state of the arena (ensure you indicate if a robot is dead - they still stay in the arena) 
@@ -73,7 +73,7 @@ To understand how the robots work - look closely at RobotBase.h and RobotBase.cp
 * Armor reduces the amount of damage the robot takes by 10% per armor level. 
 * Move speed is the number of locations that a robot can move on their turn.
 * Robots can have a single **weapon**. Choices are: Railgun, Hammer, Grenade Launcher, Flame Thrower. 
-* The Robot is configured at compile time, specifying move, armor and weapon choice. The robot also has a name - it should be fun. Keep it clean and appropriate.
+* The Robot is configured at compile time, specifying move speed, armor and weapon choice. The robot also has a name - it should be fun. Keep it clean and appropriate.
 * The robot will have various functions that get called by the arena. They are:
   * get_radar_direction - the robot tells the arena where it wants to 'look'
   * get_shot_location - the robot tells the arena where it wants to shoot. Robot returns false if it chooses not to shoot
@@ -90,9 +90,11 @@ To handle robot shots:
     * Flame thrower 30-50 damage 
 
 * get_shot_location allows the robot to specify a location ANYWHERE on the arena. The arena will then calculate the affected cells by starting at the robot's current location and iterating (adding a delta_x and delta_y) through the rows and columns in the direction of the shot location until the edge of the shot as specified by the weapon type.  
-* A railgun shoots through everything. Other robots, mounds, etc. It will go all the way to the edge of the arena regardless of where the shot location was specified. For example if the robot is at 2,2 and it shoots at 4,5 the 'path' of the shot would look like this: (3,3), (3,4), (4,5), (5,6), (5,7), (6,8), (7,9).
+* A railgun shoots through everything along a single line in the arena. Other robots, mounds, etc. It will go all the way to the edge of the arena regardless of where the shot location was specified. For example if the robot is at 2,2 and it shoots at 4,5 the 'path' of the shot would look like this: (3,3), (3,4), (4,5), (5,6), (5,7), (6,8), (7,9).
 * A flame thrower shoots a flame 3 cells wide and 4 cells from the robot. Be careful not to make the flame thrower go all the way across the arena - stop it at 4 cells from the robot.
-* To calculate **damage,** the arena generates a random number based on the weapon's damage range as specfied above. Then it gets the amount of armor the target robot has and reduces the damage by armor * 10% (for example if the target has 4 armor, the damage is reduced by .4) The arena then reduces the armor on the target by 1. 
+* A Hammer hits ONLY in a cell directly adjacent to the robot. (one of 8 cells).
+* A grenade launcher can hit ANY cell in the arena and does 'splash' damage to the cells adjacent to the center of the target cell. 9 total cells will get hit by the grenade.
+* To calculate **damage,** the arena generates a random number based on the weapon's damage range as specfied above. Then it gets the amount of armor the target robot has and reduces the damage by armor * 10% (for example if the target has 4 armor, the damage is reduced by .4) The arena then reduces the armor on the target by 1. Armor cannot go below 0.
 * Multiple robots can take damage as a result of one shot. If two robots are in the line of the shot for a railgun, both robots take damage. If two robots are in the 'box' created by the flame thrower or the grenade, both robots take damage. 
 
 **Robot Movement**
@@ -109,7 +111,7 @@ The arena contains obstacles. Here are the details on the obstacles.
 
     Mound - M: The robot cannot move through the mound. The arena must stop the robot where it collides with the mound, leaving the mound in place. That is the end of movement for the robot on that round, even if it has more movement speed remaining. For example, if a robot is moving from 5,5 to 2,2 and there is a mound at 3,3, the robot is stopped at 4,4.
 
-    Flame Thrower - F: the robot moves THROUGH the flame thrower, but takes damage as if they had been hit by another robot with a flamethrower: 30-50 damage. 
+    Flame Thrower - F: the robot moves THROUGH the flame thrower, but takes damage as if they had been hit by another robot with a flamethrower: 30-50 damage. If the robot dies while moving through the flame thrower, allow the robot to complete it's movement. For example if a robot is at 0,10 and it is moving to 0,7 and there is a flame thrower at 0,8. The robot's final position is 0,7 even though it technically died at 0,8. The idea is to try to allow the flame thrower to continue to burn other robots. If the robot dies on top of the flame thrower, that's fine too. 
 
     Robot - R: Robots cannot move through other robots. They stop prior to moving on to the cell already occupied as if they were a Mound.
 
@@ -193,3 +195,8 @@ At startup, the arena does roughly the following:
 All of this is done before the main simulation loop starts, so by the time the game runs, `m_robots` contains one instance for each compiled robot in the `robots/` directory.
 
 
+**Some Helpful Hints**
+1. If you use the actual array of the arena to represent the 'true' state of things, it saves a lot of trouble. The only issues arise when you try to have more than one thing on a spot at the same time. For example, if you have a flame thrower, and a robot moves across the flame thrower, you have to put the flame thrower 'back' rather than a '.' when the robot moves off of that cell.
+2. Shooting along the calculated path is a little challenging. Do not try to create some complicated algorithm to handle it- you don't need bresenham's midpoint algorithm for example. The best algorithm figures out the 'longest' line, whether vertical or horizontal, then uses that as a discrete set of 'steps' while incrementing the OTHER dimension accordingly. For example say you have a robot at 7,7 and it wants to shoot at 9,17. The horizontal difference is the greatest. subtract 7 from 17 is 10. You have 10 steps to cross to get from 7 to 17. Now you need to get from 7 to 9 in 10 steps. 9-7 is 2, so divide 2 by 10 and that's .2 per step. 
+3. Modularize your code to handle moving, shooting, and radar. You don't need new objects to handle these things, just good coherent functions. 
+4. Consider not printing all the details for every robot for every round while in GameMode=live. Just print the board with a key for which robot is which so the competitors can see which robot is theirs.
